@@ -4,7 +4,7 @@
 class TextResource
 {
 public:
-	static char* load(const char *name);
+    static char* load(const char *name);
 };
 
 #endif
