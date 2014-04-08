@@ -27,6 +27,7 @@
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="cloth_4_3_compute\cloth_4_3_compute.h" />
     <ClInclude Include="TextResource.h" />
   </ItemGroup>
   <ItemGroup>
@@ -46,6 +47,10 @@
     <None Include="cloth_3_2_ping_pong\lambert.vert" />
     <None Include="cloth_3_2_ping_pong\unlit.frag" />
     <None Include="cloth_3_2_ping_pong\unlit.vert" />
+    <None Include="cloth_4_3_compute\lambert.frag" />
+    <None Include="cloth_4_3_compute\lambert.vert" />
+    <None Include="cloth_4_3_compute\unlit.frag" />
+    <None Include="cloth_4_3_compute\unlit.vert" />
     <None Include="README.md">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
     </None>

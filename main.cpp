@@ -7,6 +7,7 @@
 #include "cloth_3_2_core_profile\cloth_3_2_core_profile.h"
 #include "cloth_3_2_triangle_strips\cloth_3_2_triangle_strips.h"
 #include "cloth_3_2_ping_pong\cloth_3_2_ping_pong.h"
+#include "cloth_4_3_compute\cloth_4_3_compute.h"
 using namespace std;
 
 
@@ -18,6 +19,8 @@ int main(int argc, char* argv[]) {
     cout << "3. OpenGL 3.2 (Core profile)" << endl;
     cout << "4. OpenGL 3.2 (Triangle strips)" << endl;
     cout << "5. OpenGL 3.2 (Ping pong textures)" << endl;
+    cout << "6. OpenGL 4.3 (Compute Shaders)" << endl;
+    
     int menuChoice;
     cin >> menuChoice;
     switch (menuChoice) {
@@ -38,6 +41,9 @@ int main(int argc, char* argv[]) {
         break;
     case 5:
         cloth_3_2_ping_pong::main(argc, argv);
+        break;
+    case 6:
+        cloth_4_3_compute::main(argc, argv);
         break;
     default:
         cout << "Invalid option" << endl;

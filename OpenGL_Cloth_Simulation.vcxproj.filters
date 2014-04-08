@@ -24,6 +24,9 @@
     <ClInclude Include="cloth_3_2_ping_pong\cloth_3_2_ping_pong.h">
       <Filter>cloth_3_2_ping_pong</Filter>
     </ClInclude>
+    <ClInclude Include="cloth_4_3_compute\cloth_4_3_compute.h">
+      <Filter>cloth_4_3_compute</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="README.md" />
@@ -75,6 +78,18 @@
     <None Include="cloth_3_2_ping_pong\unlit.vert">
       <Filter>cloth_3_2_ping_pong</Filter>
     </None>
+    <None Include="cloth_4_3_compute\lambert.frag">
+      <Filter>cloth_4_3_compute</Filter>
+    </None>
+    <None Include="cloth_4_3_compute\lambert.vert">
+      <Filter>cloth_4_3_compute</Filter>
+    </None>
+    <None Include="cloth_4_3_compute\unlit.frag">
+      <Filter>cloth_4_3_compute</Filter>
+    </None>
+    <None Include="cloth_4_3_compute\unlit.vert">
+      <Filter>cloth_4_3_compute</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="cloth_1_5_starting_point">
@@ -94,6 +109,9 @@
     </Filter>
     <Filter Include="cloth_3_2_ping_pong">
       <UniqueIdentifier>{4c5186d6-4305-4ffe-b698-ea30a6bcd029}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="cloth_4_3_compute">
+      <UniqueIdentifier>{0c680097-5ef0-4830-8135-0cc370303953}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
 </Project>
