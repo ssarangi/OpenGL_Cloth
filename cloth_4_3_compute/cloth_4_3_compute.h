@@ -35,6 +35,9 @@ namespace cloth_4_3_compute
 
     GLuint litShader;
     GLuint unlitShader;
+
+    GLuint computeShader;
+
     mat4 projection;
     mat4 view;
     vec4 lightPos0; // light position in eye space
@@ -714,6 +717,21 @@ namespace cloth_4_3_compute
         return program;
     }
 
+    GLuint loadComputeShader(const char* computeShaderName)
+    {
+        const char *computeShaderSource = TextResource::load(computeShaderName);
+        GLuint computeShader = glCreateShader(GL_COMPUTE_SHADER);
+        glShaderSource(computeShader, 1, &computeShaderSource, NULL);
+        glCompileShader(computeShader);
+        checkCompileStatus(computeShader, computeShaderName);
+
+        GLuint program = glCreateProgram();
+        glAttachShader(program, computeShader);
+        glLinkProgram(program);
+        checkLinkStatus(program, computeShaderName);
+        return program;
+    }
+
     int main(int &argc, char** argv)
     {
         glutInit(&argc, argv);
@@ -730,6 +748,7 @@ namespace cloth_4_3_compute
         }
         litShader = loadShader("cloth_4_3_compute/lambert.vert", "cloth_4_3_compute/lambert.frag");
         unlitShader = loadShader("cloth_4_3_compute/unlit.vert", "cloth_4_3_compute/unlit.frag");
+        computeShader = loadComputeShader("cloth_4_4_compute/vertlet.compute");
         init();
 
         glutDisplayFunc(display);

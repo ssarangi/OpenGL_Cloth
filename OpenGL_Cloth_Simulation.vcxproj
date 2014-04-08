@@ -51,6 +51,7 @@
     <None Include="cloth_4_3_compute\lambert.vert" />
     <None Include="cloth_4_3_compute\unlit.frag" />
     <None Include="cloth_4_3_compute\unlit.vert" />
+    <None Include="cloth_4_3_compute\vertlet.compute" />
     <None Include="README.md">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
     </None>
