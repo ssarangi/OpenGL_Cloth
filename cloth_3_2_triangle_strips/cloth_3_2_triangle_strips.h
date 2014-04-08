@@ -201,6 +201,7 @@ namespace cloth_3_2_triangle_strips {
         /* This is a important constructor for the entire system of particles and constraints*/
         Cloth(float width, float height, int num_particles_width, int num_particles_height) : num_particles_width(num_particles_width), num_particles_height(num_particles_height)
         {
+            std::cout << num_particles_width << std::endl;
             particles.resize(num_particles_width*num_particles_height); //I am essentially using this vector as an array with room for num_particles_width*num_particles_height particles
 
             // creating particles in a grid of particles from (0,0,0) to (width,-height,0)
@@ -440,7 +441,7 @@ namespace cloth_3_2_triangle_strips {
 
 
     // Just below are three global variables holding the actual animated stuff; Cloth and Ball 
-    Cloth cloth1(14, 10, 55, 45); // one Cloth object of the Cloth class
+    Cloth cloth1(14, 10, 100, 100); // one Cloth object of the Cloth class
     vec3 ball_pos(7, -5, 0); // the center of our one ball
     float ball_radius = 2; // the radius of our one ball
 
