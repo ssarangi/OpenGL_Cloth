@@ -743,7 +743,8 @@ namespace cloth_4_3_compute
         glutCreateWindow("Cloth Tutorial Refactoring OpenGL 4.3 Compute");
         glewExperimental = true;
         GLint GlewInitResult = glewInit();
-        if (GlewInitResult != GLEW_OK) {
+        if (GlewInitResult != GLEW_OK)
+        {
             printf("ERROR: %s\n", glewGetErrorString(GlewInitResult));
         }
         litShader = loadShader("cloth_4_3_compute/lambert.vert", "cloth_4_3_compute/lambert.frag");
