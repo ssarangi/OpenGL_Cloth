@@ -178,13 +178,13 @@ namespace cloth_4_3_compute
         int num_particles_height; // number of particles in "height" direction
         // total number of particles is num_particles_width*num_particles_height
 
-        std::vector<Particle*> particles; // all particles that are part of this cloth
+        std::vector<Particle> particles; // all particles that are part of this cloth
         std::vector<Constraint> constraints; // all constraints between particles as part of this cloth
         std::unordered_map<Particle*, uint> m_particleIndex;
 
         int getParticleIndex(int x, int y) { return y*num_particles_width + x; }
 
-        Particle* getParticle(int x, int y) { return particles[getParticleIndex(x, y)]; }
+        Particle* getParticle(int x, int y) { return &particles[getParticleIndex(x, y)]; }
         void makeConstraint(Particle *p1, Particle *p2)
         {
             uint p1Idx = m_particleIndex[p1];
@@ -246,8 +246,8 @@ namespace cloth_4_3_compute
                         0);
                     
                     Particle* pP = new Particle(pos);
-                    particles[y*num_particles_width + x] = pP; // insert particle in column x at y'th row
-                    m_particleIndex[pP] = y*num_particles_width + x;
+                    particles[y*num_particles_width + x] = Particle(pos); // insert particle in column x at y'th row
+                    // m_particleIndex[pP] = y*num_particles_width + x;
                 }
             }
 
@@ -301,12 +301,12 @@ namespace cloth_4_3_compute
 
         ~Cloth()
         {
-            for (int i = 0; i < particles.size(); ++i)
-            {
-                delete particles[i];
-            }
+            //for (int i = 0; i < particles.size(); ++i)
+            //{
+            //    delete particles[i];
+            //}
 
-            particles.clear();
+            //particles.clear();
         }
 
         /* drawing the cloth as a smooth shaded (and colored according to column) OpenGL triangular mesh
@@ -322,10 +322,10 @@ namespace cloth_4_3_compute
         void drawShaded()
         {
             // reset normals (which where written to last frame)
-            std::vector<Particle*>::iterator particle;
+            std::vector<Particle>::iterator particle;
             for (particle = particles.begin(); particle != particles.end(); particle++)
             {
-                (*particle)->resetNormal();
+                (*particle).resetNormal();
             }
 
             //create smooth per particle normals by adding up all the (hard) triangle normals that each particle is part of
@@ -423,20 +423,20 @@ namespace cloth_4_3_compute
                 }
             }
 
-            std::vector<Particle*>::iterator particle;
+            std::vector<Particle>::iterator particle;
             for (particle = particles.begin(); particle != particles.end(); particle++)
             {
-                (*particle)->timeStep(); // calculate the position of each particle at the next time step.
+                (*particle).timeStep(); // calculate the position of each particle at the next time step.
             }
         }
 
         /* used to add gravity (or any other arbitrary vector) to all particles*/
         void addForce(const vec3 direction)
         {
-            std::vector<Particle*>::iterator particle;
+            std::vector<Particle>::iterator particle;
             for (particle = particles.begin(); particle != particles.end(); particle++)
             {
-                (*particle)->addForce(direction); // add the forces to each particle
+                (*particle).addForce(direction); // add the forces to each particle
             }
 
         }
@@ -460,14 +460,14 @@ namespace cloth_4_3_compute
         */
         void ballCollision(const vec3 center, const float radius)
         {
-            std::vector<Particle*>::iterator particle;
+            std::vector<Particle>::iterator particle;
             for (particle = particles.begin(); particle != particles.end(); particle++)
             {
-                vec3 v = (*particle)->getPos() - center;
+                vec3 v = (*particle).getPos() - center;
                 float l = length(v);
                 if (length(v) < radius) // if the particle is inside the ball
                 {
-                    (*particle)->offsetPos(normalize(v)*(radius - l)); // project the particle to the surface of the ball
+                    (*particle).offsetPos(normalize(v)*(radius - l)); // project the particle to the surface of the ball
                 }
             }
         }
