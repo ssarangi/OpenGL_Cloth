@@ -806,7 +806,7 @@ namespace cloth_4_3_compute
 
         litShader = loadShader("../cloth_4_3_compute/lambert.vert", "../cloth_4_3_compute/lambert.frag");
         unlitShader = loadShader("../cloth_4_3_compute/unlit.vert", "../cloth_4_3_compute/unlit.frag");
-        computeShader = loadComputeShader("../cloth_4_3_compute/vertlet.compute");
+        computeShader = loadComputeShader("../cloth_4_3_compute/vertlet_cs.glsl");
         init();
 
         glutDisplayFunc(display);

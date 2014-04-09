@@ -14,6 +14,11 @@ struct Particle
     vec3 acceleration; // a vector representing the current acceleration of the particle
 };
 
+struct Constraint
+{
+    
+};
+
 layout (std430, binding = 0) buffer ParticleBuffer
 {
     Particle particles[];
