@@ -2,7 +2,8 @@
  * Based on "Mosegaards Cloth Simulation Coding Tutorial" ( http://cg.alexandra.dk/2009/06/02/mosegaards-cloth-simulation-coding-tutorial/ )
  */
 #define _USE_MATH_DEFINES
-#include <GL/glew.h>
+// #include <GL/glew.h>
+#include "GL/gl3w.h"
 #include <GL/freeglut.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>

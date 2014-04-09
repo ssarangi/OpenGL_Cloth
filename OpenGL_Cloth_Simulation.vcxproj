@@ -11,18 +11,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="cloth_1_5_glm\cloth_1_5_glm.h">
-      <FileType>CppCode</FileType>
-    </ClInclude>
-    <ClInclude Include="cloth_1_5_starting_point\cloth_1_5_starting_point.h">
-      <FileType>CppCode</FileType>
-    </ClInclude>
-    <ClInclude Include="cloth_2_1_shaders\cloth_2_1_shaders.h">
-      <FileType>CppCode</FileType>
-    </ClInclude>
-    <ClInclude Include="cloth_3_2_core_profile\cloth_3_2_core_profile.h" />
-    <ClInclude Include="cloth_3_2_triangle_strips\cloth_3_2_triangle_strips.h" />
-    <ClInclude Include="cloth_3_2_ping_pong\cloth_3_2_ping_pong.h" />
+    <ClCompile Include="cloth_4_3_compute\gl3w.c" />
     <ClCompile Include="TextResource.cpp" />
     <ClCompile Include="main.cpp" />
   </ItemGroup>
@@ -31,22 +20,6 @@
     <ClInclude Include="TextResource.h" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="cloth_2_1_shaders\lambert.frag" />
-    <None Include="cloth_2_1_shaders\lambert.vert" />
-    <None Include="cloth_2_1_shaders\unlit.frag" />
-    <None Include="cloth_2_1_shaders\unlit.vert" />
-    <None Include="cloth_3_2_core_profile\lambert.frag" />
-    <None Include="cloth_3_2_core_profile\lambert.vert" />
-    <None Include="cloth_3_2_core_profile\unlit.frag" />
-    <None Include="cloth_3_2_core_profile\unlit.vert" />
-    <None Include="cloth_3_2_triangle_strips\lambert.frag" />
-    <None Include="cloth_3_2_triangle_strips\lambert.vert" />
-    <None Include="cloth_3_2_triangle_strips\unlit.frag" />
-    <None Include="cloth_3_2_triangle_strips\unlit.vert" />
-    <None Include="cloth_3_2_ping_pong\lambert.frag" />
-    <None Include="cloth_3_2_ping_pong\lambert.vert" />
-    <None Include="cloth_3_2_ping_pong\unlit.frag" />
-    <None Include="cloth_3_2_ping_pong\unlit.vert" />
     <None Include="cloth_4_3_compute\lambert.frag" />
     <None Include="cloth_4_3_compute\lambert.vert" />
     <None Include="cloth_4_3_compute\unlit.frag" />
@@ -106,7 +79,7 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>glew32.lib;freeglut.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>opengl32.lib;freeglut.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(SolutionDir)3rdparty\glew-1.10.0\lib\Release\Win32;$(SolutionDir)3rdparty\freeglut\lib</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>

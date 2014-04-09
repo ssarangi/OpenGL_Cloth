@@ -4,13 +4,13 @@
 
 #define GLM_FORCE_RADIANS
 #define _USE_MATH_DEFINES
-#include "GL/gl3w.h"
+#include <GL/glew.h>
 #include <GL/freeglut.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <GL/gl.h>
-// #include <GL/glut.h> 
+#include <GL/glut.h> 
 
 #include <cmath>
 #include <vector>
@@ -26,9 +26,8 @@ namespace cloth_4_3_compute
 
     using namespace glm;
 
-    class Vertex
+    struct Vertex
     {
-    public:
         vec3 position;
         vec2 uv;
         vec3 normal;
@@ -80,22 +79,16 @@ namespace cloth_4_3_compute
     class Particle
     {
     private:
-        vec3 position;
-        vec2 uv;
-        vec3 accumulated_normal;
-
         bool movable; // can the particle move or not ? used to pin parts of the cloth
 
         float mass; // the mass of the particle (is always 1 in this example)
+        vec3 pos; // the current position of the particle in 3D space
         vec3 old_pos; // the position of the particle in the previous time step, used as part of the verlet numerical integration scheme
         vec3 acceleration; // a vector representing the current acceleration of the particle
+        vec3 accumulated_normal; // an accumulated normal (i.e. non normalized), used for OpenGL soft shading
 
     public:
-        Particle(vec3 pos) : old_pos(pos), acceleration(vec3(0, 0, 0)), mass(1), movable(true), accumulated_normal(vec3(0, 0, 0))
-        {
-            position = pos;
-        }
-
+        Particle(vec3 pos) : pos(pos), old_pos(pos), acceleration(vec3(0, 0, 0)), mass(1), movable(true), accumulated_normal(vec3(0, 0, 0)){}
         Particle(){}
 
         void addForce(vec3 f)
@@ -110,18 +103,18 @@ namespace cloth_4_3_compute
         {
             if (movable)
             {
-                vec3 temp = position;
-                position = position + (position - old_pos)*(1.0f - DAMPING) + acceleration*TIME_STEPSIZE2;
+                vec3 temp = pos;
+                pos = pos + (pos - old_pos)*(1.0f - DAMPING) + acceleration*TIME_STEPSIZE2;
                 old_pos = temp;
                 acceleration = vec3(0, 0, 0); // acceleration is reset since it HAS been translated into a change in position (and implicitely into velocity)	
             }
         }
 
-        vec3& getPos() { return position; }
+        vec3& getPos() { return pos; }
 
         void resetAcceleration() { acceleration = vec3(0, 0, 0); }
 
-        void offsetPos(const vec3 v) { if (movable) position += v; }
+        void offsetPos(const vec3 v) { if (movable) pos += v; }
 
         void makeUnmovable() { movable = false; }
 
@@ -129,8 +122,6 @@ namespace cloth_4_3_compute
         {
             accumulated_normal += normalize(normal);
         }
-
-        void setUV(vec2 uv) { this->uv = uv; }
 
         vec3& getNormal() { return accumulated_normal; } // notice, the normal is not unit length
 
@@ -168,12 +159,7 @@ namespace cloth_4_3_compute
 
     struct Cloth
     {
-    public:
-        GLuint vertexArrayObject = 0;
-        GLuint vertexBuffer = 0;
-        GLuint texture;
-        int elementSize;
-
+    private:
         int num_particles_width; // number of particles in "width" direction
         int num_particles_height; // number of particles in "height" direction
         // total number of particles is num_particles_width*num_particles_height
@@ -223,7 +209,6 @@ namespace cloth_4_3_compute
         }
 
     public:
-        GLuint vertex_vbo_storage;
 
         /* This is a important constructor for the entire system of particles and constraints*/
         Cloth(float width, float height, int num_particles_width, int num_particles_height) : num_particles_width(num_particles_width), num_particles_height(num_particles_height)
@@ -239,17 +224,6 @@ namespace cloth_4_3_compute
                         -height * (y / (float)num_particles_height),
                         0);
                     particles[y*num_particles_width + x] = Particle(pos); // insert particle in column x at y'th row
-                }
-            }
-
-            for (int y = 0; y < num_particles_height; y++)
-            {
-                for (int x = 0; x < num_particles_width; x++)
-                {
-                    vec2 uv(x / (num_particles_width - 1.0f), y / (num_particles_height - 1.0f));
-
-                    Particle* p = getParticle(x, y);
-                    p->setUV(uv);
                 }
             }
 
@@ -326,6 +300,11 @@ namespace cloth_4_3_compute
                 }
             }
 
+
+            static GLuint vertexArrayObject = 0;
+            static GLuint vertexBuffer = 0;
+            static GLuint texture;
+            static int elementSize;
             if (vertexArrayObject == 0)
             {
                 glGenVertexArrays(1, &vertexArrayObject);
@@ -340,9 +319,9 @@ namespace cloth_4_3_compute
                 glEnableVertexAttribArray(positionAttributeLocation);
                 glEnableVertexAttribArray(uvAttributeLocation);
                 glEnableVertexAttribArray(normalAttributeLocation);
-                glVertexAttribPointer(positionAttributeLocation, 3, GL_FLOAT, GL_FALSE, sizeof(Particle), (const GLvoid *)0);
-                glVertexAttribPointer(uvAttributeLocation, 2, GL_FLOAT, GL_FALSE, sizeof(Particle), (const GLvoid *)sizeof(vec3));
-                glVertexAttribPointer(normalAttributeLocation, 3, GL_FLOAT, GL_FALSE, sizeof(Particle), (const GLvoid *)(sizeof(vec3)+sizeof(vec2)));
+                glVertexAttribPointer(positionAttributeLocation, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (const GLvoid *)0);
+                glVertexAttribPointer(uvAttributeLocation, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (const GLvoid *)sizeof(vec3));
+                glVertexAttribPointer(normalAttributeLocation, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (const GLvoid *)(sizeof(vec3)+sizeof(vec2)));
 
                 std::vector<int> indices;
 
@@ -371,11 +350,22 @@ namespace cloth_4_3_compute
                 vec4 color1 = vec4(1.0f, 1.0f, 1.0f, 1.0f);
                 vec4 color2 = vec4(0.6f, 0.2f, 0.2f, 1.0f);
                 texture = buildCandyColorTexture(color1, color2, num_particles_width - 1);
+                // }
+                std::vector<Vertex> vertexData;
+
+                for (int y = 0; y < num_particles_height; y++)
+                {
+                    for (int x = 0; x < num_particles_width; x++)
+                    {
+                        vec2 uv(x / (num_particles_width - 1.0f), y / (num_particles_height - 1.0f));
+
+                        insertTriangle(getParticle(x, y), uv, vertexData);
+                    }
+                }
+                glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer);
+                glBufferData(GL_ARRAY_BUFFER, vertexData.size() * sizeof(Vertex), value_ptr(vertexData[0].position), GL_STREAM_DRAW);
+
             }
-
-            glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer);
-            glBufferData(GL_ARRAY_BUFFER, particles.size() * sizeof(Particle), &particles[0], GL_STREAM_DRAW);
-
             mat4 modelView = view;
             mat4 mvp = projection * modelView;
             glUniformMatrix4fv(glGetUniformLocation(litShader, "mvp"), 1, false, value_ptr(mvp));
@@ -478,7 +468,7 @@ namespace cloth_4_3_compute
 
     void init(GLvoid)
     {
-        // glShadeModel(GL_SMOOTH);
+        glShadeModel(GL_SMOOTH);
         glClearColor(0.2f, 0.2f, 0.4f, 0.5f);
         glEnable(GL_DEPTH_TEST);
         glDepthFunc(GL_LEQUAL);
@@ -499,32 +489,6 @@ namespace cloth_4_3_compute
 
         vec4 lightModelAmbient = vec4(0.2, 0.2, 0.2, 1.0);
         glUniform4fv(glGetUniformLocation(litShader, "lightModelAmbient"), 1, value_ptr(lightModelAmbient));
-
-        glGenBuffers(1, &cloth1.vertex_vbo_storage);
-        //std::cout << cloth1.vertex_vbo_storage << "," << cloth1.particles.size() << std::endl;
-        //glBindBuffer(GL_SHADER_STORAGE_BUFFER, cloth1.vertex_vbo_storage);
-        //{
-        //    GLenum err = glGetError();
-        //    int a = 10;
-        //}
-
-        //glBufferData(GL_SHADER_STORAGE_BUFFER, cloth1.particles.size() * sizeof(Particle), nullptr, GL_DYNAMIC_COPY);
-        //{
-        //    GLenum err = glGetError();
-        //    int a = 10;
-        //}
-
-        //glBindBuffer(GL_ARRAY_BUFFER, cloth1.vertex_vbo_storage);
-        //{
-        //    GLenum err = glGetError();
-        //    int a = 10;
-        //}
-
-        //Particle * ptr = reinterpret_cast<Particle *>(glMapBufferRange(GL_ARRAY_BUFFER, 0, cloth1.particles.size() * sizeof(Particle), GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT));
-        //{
-        //    GLenum err = glGetError();
-        //    int a = 10;
-        //}
     }
 
 
@@ -644,29 +608,11 @@ namespace cloth_4_3_compute
         // drawing
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         view = mat4(1.0f);
-        view = translate(view, vec3(-6.5, 6, -15.0f));
+        view = translate(view, vec3(-6.5, 6, -9.0f));
         view = rotate(view, 25.0f, vec3(0, 1, 0));
-        
-        //glUseProgram(computeShader);
 
-        //glBindBuffer(GL_SHADER_STORAGE_BUFFER, cloth1.vertex_vbo_storage); // Buffer Binding 1
 
-        //glBufferData(GL_SHADER_STORAGE_BUFFER, cloth1.particles.size() * sizeof(Particle), &(cloth1.particles[0]), GL_DYNAMIC_COPY);
-
-        //glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, cloth1.vertex_vbo_storage);
-
-        //glDispatchCompute(1, 1, 1);
-
-        //// Particle* data = (Particle *)glMapBuffer(GL_ARRAY_BUFFER, GL_READ_BUFFER);
-        //glBindBuffer(GL_ARRAY_BUFFER, cloth1.vertex_vbo_storage);
-        //{
-        //    GLenum err = glGetError();
-        //    int a = 10;
-        //}
-        //Particle * ptr = reinterpret_cast<Particle *>(glMapBufferRange(GL_ARRAY_BUFFER, 0, cloth1.particles.size() * sizeof(Particle), GL_MAP_READ_BIT));
-        //// memcpy(&cloth1.particles[0], ptr, cloth1.particles.size()*sizeof(Particle));
-        //glUnmapBuffer(GL_ARRAY_BUFFER);
-        //glBindBuffer(GL_ARRAY_BUFFER, 0);
+        glDispatchCompute(4, 4, 4);
 
         // setup light 
         glUseProgram(litShader);
@@ -800,32 +746,13 @@ namespace cloth_4_3_compute
         glutInitWindowSize(1280, 720);
 
         glutCreateWindow("Cloth Tutorial Refactoring OpenGL 4.3 Compute");
-
-        //glewExperimental = false;
-        //GLint GlewInitResult = glewInit();
-        //if (GlewInitResult != GLEW_OK)
-        //{
-        //    printf("ERROR: %s\n", glewGetErrorString(GlewInitResult));
-        //}
-        //{
-        //    GLenum err = glGetError();
-        //    int a = 10;
-        //}
-
-        if (gl3wInit())
+        glewExperimental = true;
+        GLint GlewInitResult = glewInit();
+        if (GlewInitResult != GLEW_OK)
         {
-            fprintf(stderr, "failed to initialize OpenGL\n");
-            return -1;
+            printf("ERROR: %s\n", glewGetErrorString(GlewInitResult));
         }
-        
-        if (!gl3wIsSupported(4, 2)) {
-            fprintf(stderr, "OpenGL 4.2 not supported\n");
-            return -1;
-        }
-
         litShader = loadShader("cloth_4_3_compute/lambert.vert", "cloth_4_3_compute/lambert.frag");
-
-
         unlitShader = loadShader("cloth_4_3_compute/unlit.vert", "cloth_4_3_compute/unlit.frag");
         computeShader = loadComputeShader("cloth_4_3_compute/vertlet.compute");
         init();
