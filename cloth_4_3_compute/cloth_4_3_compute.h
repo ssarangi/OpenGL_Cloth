@@ -10,7 +10,7 @@
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <GL/gl.h>
-// #include <GL/glut.h> 
+#include <unordered_map>
 
 #include <cmath>
 #include <vector>
@@ -145,8 +145,9 @@ namespace cloth_4_3_compute
 
     public:
         Particle *p1, *p2; // the two particles that are connected through this constraint
+        int p1Idx, p2Idx;
 
-        Constraint(Particle *p1, Particle *p2) : p1(p1), p2(p2)
+        Constraint(Particle *p1, Particle *p2, uint p1idx, uint p2idx) : p1(p1), p2(p2), p1Idx(p1idx), p2Idx(p2idx)
         {
             vec3 vec = p1->getPos() - p2->getPos();
             rest_distance = length(vec);
@@ -163,7 +164,6 @@ namespace cloth_4_3_compute
             p1->offsetPos(correctionVectorHalf); // correctionVectorHalf is pointing from p1 to p2, so the length should move p1 half the length needed to satisfy the constraint.
             p2->offsetPos(-correctionVectorHalf); // we must move p2 the negative direction of correctionVectorHalf since it points from p2 to p1, and not p1 to p2.	
         }
-
     };
 
     struct Cloth
@@ -178,13 +178,19 @@ namespace cloth_4_3_compute
         int num_particles_height; // number of particles in "height" direction
         // total number of particles is num_particles_width*num_particles_height
 
-        std::vector<Particle> particles; // all particles that are part of this cloth
+        std::vector<Particle*> particles; // all particles that are part of this cloth
         std::vector<Constraint> constraints; // all constraints between particles as part of this cloth
+        std::unordered_map<Particle*, uint> m_particleIndex;
 
         int getParticleIndex(int x, int y) { return y*num_particles_width + x; }
 
-        Particle* getParticle(int x, int y) { return &particles[getParticleIndex(x, y)]; }
-        void makeConstraint(Particle *p1, Particle *p2) { constraints.push_back(Constraint(p1, p2)); }
+        Particle* getParticle(int x, int y) { return particles[getParticleIndex(x, y)]; }
+        void makeConstraint(Particle *p1, Particle *p2)
+        {
+            uint p1Idx = m_particleIndex[p1];
+            uint p2Idx = m_particleIndex[p2];
+            constraints.push_back(Constraint(p1, p2, p1Idx, p2Idx));
+        }
 
 
         /* A private method used by drawShaded() and addWindForcesForTriangle() to retrieve the
@@ -238,7 +244,10 @@ namespace cloth_4_3_compute
                     vec3 pos = vec3(width * (x / (float)num_particles_width),
                         -height * (y / (float)num_particles_height),
                         0);
-                    particles[y*num_particles_width + x] = Particle(pos); // insert particle in column x at y'th row
+                    
+                    Particle* pP = new Particle(pos);
+                    particles[y*num_particles_width + x] = pP; // insert particle in column x at y'th row
+                    m_particleIndex[pP] = y*num_particles_width + x;
                 }
             }
 
@@ -290,6 +299,16 @@ namespace cloth_4_3_compute
             }
         }
 
+        ~Cloth()
+        {
+            for (int i = 0; i < particles.size(); ++i)
+            {
+                delete particles[i];
+            }
+
+            particles.clear();
+        }
+
         /* drawing the cloth as a smooth shaded (and colored according to column) OpenGL triangular mesh
         Called from the display() method
         The cloth is seen as consisting of triangles for four particles in the grid as follows:
@@ -303,10 +322,10 @@ namespace cloth_4_3_compute
         void drawShaded()
         {
             // reset normals (which where written to last frame)
-            std::vector<Particle>::iterator particle;
+            std::vector<Particle*>::iterator particle;
             for (particle = particles.begin(); particle != particles.end(); particle++)
             {
-                (*particle).resetNormal();
+                (*particle)->resetNormal();
             }
 
             //create smooth per particle normals by adding up all the (hard) triangle normals that each particle is part of
@@ -404,20 +423,20 @@ namespace cloth_4_3_compute
                 }
             }
 
-            std::vector<Particle>::iterator particle;
+            std::vector<Particle*>::iterator particle;
             for (particle = particles.begin(); particle != particles.end(); particle++)
             {
-                (*particle).timeStep(); // calculate the position of each particle at the next time step.
+                (*particle)->timeStep(); // calculate the position of each particle at the next time step.
             }
         }
 
         /* used to add gravity (or any other arbitrary vector) to all particles*/
         void addForce(const vec3 direction)
         {
-            std::vector<Particle>::iterator particle;
+            std::vector<Particle*>::iterator particle;
             for (particle = particles.begin(); particle != particles.end(); particle++)
             {
-                (*particle).addForce(direction); // add the forces to each particle
+                (*particle)->addForce(direction); // add the forces to each particle
             }
 
         }
@@ -441,14 +460,14 @@ namespace cloth_4_3_compute
         */
         void ballCollision(const vec3 center, const float radius)
         {
-            std::vector<Particle>::iterator particle;
+            std::vector<Particle*>::iterator particle;
             for (particle = particles.begin(); particle != particles.end(); particle++)
             {
-                vec3 v = (*particle).getPos() - center;
+                vec3 v = (*particle)->getPos() - center;
                 float l = length(v);
                 if (length(v) < radius) // if the particle is inside the ball
                 {
-                    (*particle).offsetPos(normalize(v)*(radius - l)); // project the particle to the surface of the ball
+                    (*particle)->offsetPos(normalize(v)*(radius - l)); // project the particle to the surface of the ball
                 }
             }
         }
@@ -501,30 +520,6 @@ namespace cloth_4_3_compute
         glUniform4fv(glGetUniformLocation(litShader, "lightModelAmbient"), 1, value_ptr(lightModelAmbient));
 
         glGenBuffers(1, &cloth1.vertex_vbo_storage);
-        //std::cout << cloth1.vertex_vbo_storage << "," << cloth1.particles.size() << std::endl;
-        //glBindBuffer(GL_SHADER_STORAGE_BUFFER, cloth1.vertex_vbo_storage);
-        //{
-        //    GLenum err = glGetError();
-        //    int a = 10;
-        //}
-
-        //glBufferData(GL_SHADER_STORAGE_BUFFER, cloth1.particles.size() * sizeof(Particle), nullptr, GL_DYNAMIC_COPY);
-        //{
-        //    GLenum err = glGetError();
-        //    int a = 10;
-        //}
-
-        //glBindBuffer(GL_ARRAY_BUFFER, cloth1.vertex_vbo_storage);
-        //{
-        //    GLenum err = glGetError();
-        //    int a = 10;
-        //}
-
-        //Particle * ptr = reinterpret_cast<Particle *>(glMapBufferRange(GL_ARRAY_BUFFER, 0, cloth1.particles.size() * sizeof(Particle), GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT));
-        //{
-        //    GLenum err = glGetError();
-        //    int a = 10;
-        //}
     }
 
 
@@ -647,29 +642,26 @@ namespace cloth_4_3_compute
         view = translate(view, vec3(-6.5, 6, -15.0f));
         view = rotate(view, 25.0f, vec3(0, 1, 0));
         
-        //glUseProgram(computeShader);
+        glUseProgram(computeShader);
+        glBindBuffer(GL_SHADER_STORAGE_BUFFER, cloth1.vertex_vbo_storage); // Buffer Binding 1
+        glBufferData(GL_SHADER_STORAGE_BUFFER, cloth1.particles.size() * sizeof(Particle), &(cloth1.particles[0]), GL_DYNAMIC_COPY);
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, cloth1.vertex_vbo_storage);
 
-        //glBindBuffer(GL_SHADER_STORAGE_BUFFER, cloth1.vertex_vbo_storage); // Buffer Binding 1
+        glDispatchCompute(6, 6, 1);
 
-        //glBufferData(GL_SHADER_STORAGE_BUFFER, cloth1.particles.size() * sizeof(Particle), &(cloth1.particles[0]), GL_DYNAMIC_COPY);
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, 0);
 
-        //glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, cloth1.vertex_vbo_storage);
+        glBindBuffer(GL_ARRAY_BUFFER, cloth1.vertex_vbo_storage);
+        Particle * ptr = reinterpret_cast<Particle *>(glMapBufferRange(GL_ARRAY_BUFFER, 0, cloth1.particles.size() * sizeof(Particle), GL_MAP_READ_BIT));
 
-        //glDispatchCompute(1, 1, 1);
-
-        //// Particle* data = (Particle *)glMapBuffer(GL_ARRAY_BUFFER, GL_READ_BUFFER);
-        //glBindBuffer(GL_ARRAY_BUFFER, cloth1.vertex_vbo_storage);
-        //{
-        //    GLenum err = glGetError();
-        //    int a = 10;
-        //}
-        //Particle * ptr = reinterpret_cast<Particle *>(glMapBufferRange(GL_ARRAY_BUFFER, 0, cloth1.particles.size() * sizeof(Particle), GL_MAP_READ_BIT));
-        //// memcpy(&cloth1.particles[0], ptr, cloth1.particles.size()*sizeof(Particle));
-        //glUnmapBuffer(GL_ARRAY_BUFFER);
-        //glBindBuffer(GL_ARRAY_BUFFER, 0);
-
+        memcpy(&cloth1.particles[0], ptr, cloth1.particles.size()*sizeof(Particle));
+        glUnmapBuffer(GL_ARRAY_BUFFER);
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+        
+        
         // setup light 
         glUseProgram(litShader);
+
         vec4 eyeSpaceLight[2] = { lightPos0, lightPos1 };
         glUniform4fv(glGetUniformLocation(litShader, "lightPosition"), 2, value_ptr(eyeSpaceLight[0]));
         cloth1.drawShaded();
@@ -801,17 +793,6 @@ namespace cloth_4_3_compute
 
         glutCreateWindow("Cloth Tutorial Refactoring OpenGL 4.3 Compute");
 
-        //glewExperimental = false;
-        //GLint GlewInitResult = glewInit();
-        //if (GlewInitResult != GLEW_OK)
-        //{
-        //    printf("ERROR: %s\n", glewGetErrorString(GlewInitResult));
-        //}
-        //{
-        //    GLenum err = glGetError();
-        //    int a = 10;
-        //}
-
         if (gl3wInit())
         {
             fprintf(stderr, "failed to initialize OpenGL\n");
@@ -823,11 +804,9 @@ namespace cloth_4_3_compute
             return -1;
         }
 
-        litShader = loadShader("cloth_4_3_compute/lambert.vert", "cloth_4_3_compute/lambert.frag");
-
-
-        unlitShader = loadShader("cloth_4_3_compute/unlit.vert", "cloth_4_3_compute/unlit.frag");
-        computeShader = loadComputeShader("cloth_4_3_compute/vertlet.compute");
+        litShader = loadShader("../cloth_4_3_compute/lambert.vert", "../cloth_4_3_compute/lambert.frag");
+        unlitShader = loadShader("../cloth_4_3_compute/unlit.vert", "../cloth_4_3_compute/unlit.frag");
+        computeShader = loadComputeShader("../cloth_4_3_compute/vertlet.compute");
         init();
 
         glutDisplayFunc(display);

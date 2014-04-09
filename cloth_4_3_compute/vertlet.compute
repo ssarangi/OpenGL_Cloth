@@ -19,9 +19,9 @@ layout (std430, binding = 0) buffer ParticleBuffer
     Particle particles[];
 } particleBuffer;
 
-layout (local_size_x = 4, local_size_y = 4, local_size_z = 1) in;
+layout (local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 
 void main()
 {
-    particleBuffer.particles[gl_GlobalInvocationID.x].position += vec3(0.5f, 0.5f, 0.5f);
+    particleBuffer.particles[gl_GlobalInvocationID.x].position += vec3(0.0f, 0.005f, 0.0f);
 }
