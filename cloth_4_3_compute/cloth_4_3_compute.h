@@ -24,6 +24,27 @@ namespace cloth_4_3_compute
 #define TIME_STEPSIZE2 0.5f*0.5f // how large time step each particle takes each frame
 #define CONSTRAINT_ITERATIONS 15 // how many iterations of constraint satisfaction each frame (more is rigid, less is soft)
 
+    void ExitOnGLError(const char* error_message)
+    {
+        const GLenum ErrorValue = glGetError();
+
+        if (ErrorValue != GL_NO_ERROR)
+        {
+            const char* APPEND_DETAIL_STRING = ": %s\n";
+            const size_t APPEND_LENGTH = strlen(APPEND_DETAIL_STRING) + 1;
+            const size_t message_length = strlen(error_message);
+            char* display_message = (char*)malloc(message_length + APPEND_LENGTH);
+
+            memcpy(display_message, error_message, message_length);
+            memcpy(&display_message[message_length], APPEND_DETAIL_STRING, APPEND_LENGTH);
+
+            fprintf(stderr, display_message, gluErrorString(ErrorValue));
+
+            free(display_message);
+            exit(EXIT_FAILURE);
+        }
+    }
+
     using namespace glm;
 
     class Vertex
@@ -643,9 +664,8 @@ namespace cloth_4_3_compute
         view = rotate(view, 25.0f, vec3(0, 1, 0));
         
         glUseProgram(computeShader);
-        glBindBuffer(GL_SHADER_STORAGE_BUFFER, cloth1.vertex_vbo_storage); // Buffer Binding 1
-        glBufferData(GL_SHADER_STORAGE_BUFFER, cloth1.particles.size() * sizeof(Particle), &(cloth1.particles[0]), GL_DYNAMIC_COPY);
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, cloth1.vertex_vbo_storage);
+        glBufferData(GL_SHADER_STORAGE_BUFFER, cloth1.particles.size() * sizeof(Particle), &(cloth1.particles[0]), GL_DYNAMIC_COPY);
 
         glDispatchCompute(6, 6, 1);
 
