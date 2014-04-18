@@ -165,10 +165,9 @@ namespace cloth_4_3_compute
         float rest_distance; // the length between particle p1 and p2 in rest configuration
 
     public:
-        Particle *p1, *p2; // the two particles that are connected through this constraint
         int p1Idx, p2Idx;
 
-        Constraint(Particle *p1, Particle *p2, uint p1idx, uint p2idx) : p1(p1), p2(p2), p1Idx(p1idx), p2Idx(p2idx)
+        Constraint(Particle *p1, Particle *p2, uint p1idx, uint p2idx) : p1Idx(p1idx), p2Idx(p2idx)
         {
             vec3 vec = p1->getPos() - p2->getPos();
             rest_distance = length(vec);
@@ -190,15 +189,16 @@ namespace cloth_4_3_compute
 
         std::vector<Particle> particles; // all particles that are part of this cloth
         std::vector<Constraint> constraints; // all constraints between particles as part of this cloth
-        std::unordered_map<Particle*, uint> m_particleIndex;
+		std::unordered_map<uint, Particle*> m_index2particle;
+		std::unordered_map<Particle*, uint> m_particle2index;
 
         int getParticleIndex(int x, int y) { return y*num_particles_width + x; }
 
         Particle* getParticle(int x, int y) { return &particles[getParticleIndex(x, y)]; }
         void makeConstraint(Particle *p1, Particle *p2)
         {
-            uint p1Idx = m_particleIndex[p1];
-            uint p2Idx = m_particleIndex[p2];
+            uint p1Idx = m_particle2index[p1];
+            uint p2Idx = m_particle2index[p2];
             constraints.push_back(Constraint(p1, p2, p1Idx, p2Idx));
         }
 
@@ -206,12 +206,14 @@ namespace cloth_4_3_compute
 		the method is called by Cloth.time_step() many times per frame*/
 		void satisfyConstraint(Constraint* pConstraint)
 		{
-			vec3 p1_to_p2 = pConstraint->p2->getPos() - pConstraint->p1->getPos(); // vector from p1 to p2
+			Particle* p1 = m_index2particle[pConstraint->p1Idx];
+			Particle* p2 = m_index2particle[pConstraint->p2Idx];
+			vec3 p1_to_p2 = p2->getPos() - p1->getPos(); // vector from p1 to p2
 			float current_distance = length(p1_to_p2); // current distance between p1 and p2
 			vec3 correctionVector = p1_to_p2*(1 - pConstraint->rest_distance / current_distance); // The offset vector that could moves p1 into a distance of rest_distance to p2
 			vec3 correctionVectorHalf = correctionVector*0.5f; // Lets make it half that length, so that we can move BOTH p1 and p2.
-			pConstraint->p1->offsetPos(correctionVectorHalf); // correctionVectorHalf is pointing from p1 to p2, so the length should move p1 half the length needed to satisfy the constraint.
-			pConstraint->p2->offsetPos(-correctionVectorHalf); // we must move p2 the negative direction of correctionVectorHalf since it points from p2 to p1, and not p1 to p2.	
+			p1->offsetPos(correctionVectorHalf); // correctionVectorHalf is pointing from p1 to p2, so the length should move p1 half the length needed to satisfy the constraint.
+			p2->offsetPos(-correctionVectorHalf); // we must move p2 the negative direction of correctionVectorHalf since it points from p2 to p1, and not p1 to p2.	
 		}
 
 
@@ -267,9 +269,9 @@ namespace cloth_4_3_compute
                         -height * (y / (float)num_particles_height),
                         0);
                     
-                    Particle* pP = new Particle(pos);
                     particles[y*num_particles_width + x] = Particle(pos); // insert particle in column x at y'th row
-                    // m_particleIndex[pP] = y*num_particles_width + x;
+					m_index2particle[y*num_particles_width + x] = &particles[y*num_particles_width + x];
+					m_particle2index[&particles[y*num_particles_width + x]] = y*num_particles_width + x;
                 }
             }
 
