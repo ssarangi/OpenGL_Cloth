@@ -14,15 +14,22 @@ struct Particle
     vec3 acceleration; // a vector representing the current acceleration of the particle
 };
 
-//struct Constraint
-//{
-    
-//};
+struct Constraint
+{
+    int p1Idx;
+    int p2Idx;
+    float rest_distance;
+};
 
 layout (std430, binding = 0) buffer ParticleBuffer
 {
     Particle particles[];
 } particleBuffer;
+
+layout (std430, binding = 1) buffer ConstraintBuffer
+{
+    Constraint constraints[];
+} constraintBuffer;
 
 layout (local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 

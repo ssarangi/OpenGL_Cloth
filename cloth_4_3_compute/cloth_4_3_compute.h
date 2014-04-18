@@ -162,10 +162,9 @@ namespace cloth_4_3_compute
     class Constraint
     {
     public:
+        int p1Idx;
+        int p2Idx;
         float rest_distance; // the length between particle p1 and p2 in rest configuration
-
-    public:
-        int p1Idx, p2Idx;
 
         Constraint(Particle *p1, Particle *p2, uint p1idx, uint p2idx) : p1Idx(p1idx), p2Idx(p2idx)
         {
@@ -189,8 +188,8 @@ namespace cloth_4_3_compute
 
         std::vector<Particle> particles; // all particles that are part of this cloth
         std::vector<Constraint> constraints; // all constraints between particles as part of this cloth
-		std::unordered_map<uint, Particle*> m_index2particle;
-		std::unordered_map<Particle*, uint> m_particle2index;
+        std::unordered_map<uint, Particle*> m_index2particle;
+        std::unordered_map<Particle*, uint> m_particle2index;
 
         int getParticleIndex(int x, int y) { return y*num_particles_width + x; }
 
@@ -202,19 +201,19 @@ namespace cloth_4_3_compute
             constraints.push_back(Constraint(p1, p2, p1Idx, p2Idx));
         }
 
-		/* This is one of the important methods, where a single constraint between two particles p1 and p2 is solved
-		the method is called by Cloth.time_step() many times per frame*/
-		void satisfyConstraint(Constraint* pConstraint)
-		{
-			Particle* p1 = m_index2particle[pConstraint->p1Idx];
-			Particle* p2 = m_index2particle[pConstraint->p2Idx];
-			vec3 p1_to_p2 = p2->getPos() - p1->getPos(); // vector from p1 to p2
-			float current_distance = length(p1_to_p2); // current distance between p1 and p2
-			vec3 correctionVector = p1_to_p2*(1 - pConstraint->rest_distance / current_distance); // The offset vector that could moves p1 into a distance of rest_distance to p2
-			vec3 correctionVectorHalf = correctionVector*0.5f; // Lets make it half that length, so that we can move BOTH p1 and p2.
-			p1->offsetPos(correctionVectorHalf); // correctionVectorHalf is pointing from p1 to p2, so the length should move p1 half the length needed to satisfy the constraint.
-			p2->offsetPos(-correctionVectorHalf); // we must move p2 the negative direction of correctionVectorHalf since it points from p2 to p1, and not p1 to p2.	
-		}
+        /* This is one of the important methods, where a single constraint between two particles p1 and p2 is solved
+        the method is called by Cloth.time_step() many times per frame*/
+        void satisfyConstraint(Constraint* pConstraint)
+        {
+            Particle* p1 = m_index2particle[pConstraint->p1Idx];
+            Particle* p2 = m_index2particle[pConstraint->p2Idx];
+            vec3 p1_to_p2 = p2->getPos() - p1->getPos(); // vector from p1 to p2
+            float current_distance = length(p1_to_p2); // current distance between p1 and p2
+            vec3 correctionVector = p1_to_p2*(1 - pConstraint->rest_distance / current_distance); // The offset vector that could moves p1 into a distance of rest_distance to p2
+            vec3 correctionVectorHalf = correctionVector*0.5f; // Lets make it half that length, so that we can move BOTH p1 and p2.
+            p1->offsetPos(correctionVectorHalf); // correctionVectorHalf is pointing from p1 to p2, so the length should move p1 half the length needed to satisfy the constraint.
+            p2->offsetPos(-correctionVectorHalf); // we must move p2 the negative direction of correctionVectorHalf since it points from p2 to p1, and not p1 to p2.	
+        }
 
 
         /* A private method used by drawShaded() and addWindForcesForTriangle() to retrieve the
@@ -254,6 +253,7 @@ namespace cloth_4_3_compute
 
     public:
         GLuint vertex_vbo_storage;
+        GLuint constraint_buffer_object;
 
         /* This is a important constructor for the entire system of particles and constraints*/
         Cloth(float width, float height, int num_particles_width, int num_particles_height) : num_particles_width(num_particles_width), num_particles_height(num_particles_height)
@@ -270,8 +270,8 @@ namespace cloth_4_3_compute
                         0);
                     
                     particles[y*num_particles_width + x] = Particle(pos); // insert particle in column x at y'th row
-					m_index2particle[y*num_particles_width + x] = &particles[y*num_particles_width + x];
-					m_particle2index[&particles[y*num_particles_width + x]] = y*num_particles_width + x;
+                    m_index2particle[y*num_particles_width + x] = &particles[y*num_particles_width + x];
+                    m_particle2index[&particles[y*num_particles_width + x]] = y*num_particles_width + x;
                 }
             }
 
@@ -390,20 +390,27 @@ namespace cloth_4_3_compute
                 std::vector<int> indices;
 
 
-                for (int j = 0; j < num_particles_height - 1; j++) {
+                for (int j = 0; j < num_particles_height - 1; j++)
+                {
                     int index;
-                    if (j > 0) {
+                    if (j > 0)
+                    {
                         indices.push_back(j * num_particles_width); // make degenerate
                     }
-                    for (int i = 0; i <= num_particles_width - 1; i++) {
+                    
+                    for (int i = 0; i <= num_particles_width - 1; i++)
+                    {
                         index = j * num_particles_width + i;
                         indices.push_back(index);
                         indices.push_back(index + num_particles_width);
                     }
-                    if (j + 1 < num_particles_height - 1) {
+                    
+                    if (j + 1 < num_particles_height - 1)
+                    {
                         indices.push_back(index + num_particles_width); // make degenerate
                     }
                 }
+
                 elementSize = indices.size();
 
                 GLuint elementArrayBuffer;
@@ -443,7 +450,7 @@ namespace cloth_4_3_compute
             {
                 for (constraint = constraints.begin(); constraint != constraints.end(); constraint++)
                 {
-					satisfyConstraint(&(*constraint)); // satisfy constraint.
+                    satisfyConstraint(&(*constraint)); // satisfy constraint.
                 }
             }
 
@@ -544,6 +551,7 @@ namespace cloth_4_3_compute
         glUniform4fv(glGetUniformLocation(litShader, "lightModelAmbient"), 1, value_ptr(lightModelAmbient));
 
         glGenBuffers(1, &cloth1.vertex_vbo_storage);
+        glGenBuffers(1, &cloth1.constraint_buffer_object);
     }
 
 
@@ -669,6 +677,9 @@ namespace cloth_4_3_compute
         glUseProgram(computeShader);
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, cloth1.vertex_vbo_storage);
         glBufferData(GL_SHADER_STORAGE_BUFFER, cloth1.particles.size() * sizeof(Particle), &(cloth1.particles[0]), GL_DYNAMIC_COPY);
+
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, cloth1.constraint_buffer_object);
+        glBufferData(GL_SHADER_STORAGE_BUFFER, cloth1.constraints.size() * sizeof(Constraint), &(cloth1.constraints[0]), GL_DYNAMIC_COPY);
 
         glDispatchCompute(6, 6, 1);
 
