@@ -27,6 +27,12 @@
     <None Include="cloth_4_3_compute\unlit.vert">
       <Filter>cloth_4_3_compute</Filter>
     </None>
+    <None Include="cloth_4_3_compute\accumulateForces_cs.glsl">
+      <Filter>cloth_4_3_compute</Filter>
+    </None>
+    <None Include="cloth_4_3_compute\constraint_cs.glsl">
+      <Filter>cloth_4_3_compute</Filter>
+    </None>
     <None Include="cloth_4_3_compute\vertlet_cs.glsl">
       <Filter>cloth_4_3_compute</Filter>
     </None>

@@ -1,5 +1,7 @@
 #version 430
-uniform float roll;
+
+#define DAMPING 0.01f // how much to damp the cloth simulation each frame
+#define TIME_STEPSIZE2 0.5f*0.5f // how large time step each particle takes each frame
 
 struct Particle
 {
@@ -14,26 +16,35 @@ struct Particle
     vec3 acceleration; // a vector representing the current acceleration of the particle
 };
 
-struct Constraint
-{
-    int p1Idx;
-    int p2Idx;
-    float rest_distance;
-};
 
 layout (std430, binding = 0) buffer ParticleBuffer
 {
     Particle particles[];
 } particleBuffer;
 
-layout (std430, binding = 1) buffer ConstraintBuffer
-{
-    Constraint constraints[];
-} constraintBuffer;
-
 layout (local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
+
+void vertlet(int flattened_id)
+{
+    if (particleBuffer.particles[flattened_id].movable)
+    {
+        vec3 temp = particleBuffer.particles[flattened_id].position;
+        vec3 old_pos = particleBuffer.particles[flattened_id].old_pos;
+        vec3 acceleration = particleBuffer.particles[flattened_id].acceleration;
+        particleBuffer.particles[flattened_id].position = temp + (temp - old_pos) * (1.0f - DAMPING) + acceleration * TIME_STEPSIZE2;
+
+        particleBuffer.particles[flattened_id].old_pos = temp;
+        particleBuffer.particles[flattened_id].acceleration = vec3(0, 0, 0);
+    }
+}
 
 void main()
 {
-    particleBuffer.particles[gl_GlobalInvocationID.x].position += vec3(0.0f, 0.005f, 0.0f);
+    // particleBuffer.particles[gl_GlobalInvocationID.x].position += vec3(0.0f, 0.005f, 0.0f);
+
+    int flattened_id = gl_LocalInvocationID.z * gl_WorkGroupSize.x * gl_WorkGroupSize.y +
+                        gl_LocalInvocationID.y * gl_WorkGroupSize.x +
+                         gl_LocalInvocationID.x;
+
+    
 }

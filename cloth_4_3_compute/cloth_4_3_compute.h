@@ -58,7 +58,9 @@ namespace cloth_4_3_compute
     GLuint litShader;
     GLuint unlitShader;
 
-    GLuint computeShader;
+    GLuint accumulateForceCS;
+    GLuint constraintCS;
+    GLuint vertletCS;
 
     mat4 projection;
     mat4 view;
@@ -112,6 +114,8 @@ namespace cloth_4_3_compute
         vec3 acceleration; // a vector representing the current acceleration of the particle
 
     public:
+        std::vector<int> constraints;
+
         Particle(vec3 pos) : old_pos(pos), acceleration(vec3(0, 0, 0)), mass(1), movable(true), accumulated_normal(vec3(0, 0, 0))
         {
             position = pos;
@@ -171,7 +175,6 @@ namespace cloth_4_3_compute
             vec3 vec = p1->getPos() - p2->getPos();
             rest_distance = length(vec);
         }
-
     };
 
     struct Cloth
@@ -198,6 +201,10 @@ namespace cloth_4_3_compute
         {
             uint p1Idx = m_particle2index[p1];
             uint p2Idx = m_particle2index[p2];
+    
+            p1->constraints.push_back(p2Idx);
+            p2->constraints.push_back(p1Idx);
+
             constraints.push_back(Constraint(p1, p2, p1Idx, p2Idx));
         }
 
@@ -663,8 +670,8 @@ namespace cloth_4_3_compute
         ball_time++;
         ball_pos[2] = (float)cos(ball_time / 50.0f) * 7;
 
-        cloth1.addForce(vec3(0, -0.2, 0)*TIME_STEPSIZE2); // add gravity each frame, pointing down
-        cloth1.windForce(vec3(0.5, 0, 0.2)*TIME_STEPSIZE2); // generate some wind each frame
+        cloth1.addForce(vec3(0, -0.2, 0) * TIME_STEPSIZE2); // add gravity each frame, pointing down
+        cloth1.windForce(vec3(0.5, 0, 0.2) * TIME_STEPSIZE2); // generate some wind each frame
         cloth1.timeStep(); // calculate the particle positions of the next frame
         cloth1.ballCollision(ball_pos, ball_radius); // resolve collision with the ball
 
@@ -674,23 +681,35 @@ namespace cloth_4_3_compute
         view = translate(view, vec3(-6.5, 6, -15.0f));
         view = rotate(view, 25.0f, vec3(0, 1, 0));
         
-        glUseProgram(computeShader);
-        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, cloth1.vertex_vbo_storage);
-        glBufferData(GL_SHADER_STORAGE_BUFFER, cloth1.particles.size() * sizeof(Particle), &(cloth1.particles[0]), GL_DYNAMIC_COPY);
+        //glUseProgram(accumulateForceCS);
+        //glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, cloth1.vertex_vbo_storage);
+        //glBufferData(GL_SHADER_STORAGE_BUFFER, cloth1.particles.size() * sizeof(Particle), &(cloth1.particles[0]), GL_DYNAMIC_COPY);
 
-        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, cloth1.constraint_buffer_object);
-        glBufferData(GL_SHADER_STORAGE_BUFFER, cloth1.constraints.size() * sizeof(Constraint), &(cloth1.constraints[0]), GL_DYNAMIC_COPY);
+        //glDispatchCompute(6, 6, 1);
 
-        glDispatchCompute(6, 6, 1);
+        //glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, 0);
 
-        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, 0);
+        //glUseProgram(constraintCS);
+        //glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, cloth1.vertex_vbo_storage);
+        //glBufferData(GL_SHADER_STORAGE_BUFFER, cloth1.particles.size() * sizeof(Particle), &(cloth1.particles[0]), GL_DYNAMIC_COPY);
 
-        glBindBuffer(GL_ARRAY_BUFFER, cloth1.vertex_vbo_storage);
-        Particle * ptr = reinterpret_cast<Particle *>(glMapBufferRange(GL_ARRAY_BUFFER, 0, cloth1.particles.size() * sizeof(Particle), GL_MAP_READ_BIT));
+        //glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, cloth1.constraint_buffer_object);
+        //glBufferData(GL_SHADER_STORAGE_BUFFER, cloth1.constraints.size() * sizeof(Constraint), &(cloth1.constraints[0]), GL_DYNAMIC_COPY);
 
-        memcpy(&cloth1.particles[0], ptr, cloth1.particles.size()*sizeof(Particle));
-        glUnmapBuffer(GL_ARRAY_BUFFER);
-        glBindBuffer(GL_ARRAY_BUFFER, 0);
+        //glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, 0);
+        //glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, 0);
+
+        //// glDispatchCompute()
+
+
+        //glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, 0);
+
+        //glBindBuffer(GL_ARRAY_BUFFER, cloth1.vertex_vbo_storage);
+        //Particle * ptr = reinterpret_cast<Particle *>(glMapBufferRange(GL_ARRAY_BUFFER, 0, cloth1.particles.size() * sizeof(Particle), GL_MAP_READ_BIT));
+
+        //memcpy(&cloth1.particles[0], ptr, cloth1.particles.size()*sizeof(Particle));
+        //glUnmapBuffer(GL_ARRAY_BUFFER);
+        //glBindBuffer(GL_ARRAY_BUFFER, 0);
         
         
         // setup light 
@@ -840,7 +859,9 @@ namespace cloth_4_3_compute
 
         litShader = loadShader("../cloth_4_3_compute/lambert.vert", "../cloth_4_3_compute/lambert.frag");
         unlitShader = loadShader("../cloth_4_3_compute/unlit.vert", "../cloth_4_3_compute/unlit.frag");
-        computeShader = loadComputeShader("../cloth_4_3_compute/vertlet_cs.glsl");
+        //accumulateForceCS = loadComputeShader("../cloth_4_3_compute/accumulateForces_cs.glsl");
+        //constraintCS = loadComputeShader("../cloth_4_3_compute/constraint_cs.glsl");
+        //vertletCS = loadComputeShader("../cloth_4_3_compute/vertlet_cs.glsl");
         init();
 
         glutDisplayFunc(display);
