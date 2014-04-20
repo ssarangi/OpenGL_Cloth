@@ -26,6 +26,11 @@ layout (std430, binding = 0) buffer ParticleBuffer
     Particle particles[];
 } particleBuffer;
 
+layout (std430, binding = 1) buffer IDBuffer
+{
+    uint ids[];
+} idBuffer;
+
 uint get_invocation()
 {
    uint work_group = gl_WorkGroupID.x * gl_NumWorkGroups.y * gl_NumWorkGroups.z + gl_WorkGroupID.y * gl_NumWorkGroups.z + gl_WorkGroupID.z;
@@ -107,6 +112,7 @@ void main()
     uint flattened_id = get_invocation();
 
     particleBuffer.particles[flattened_id].id.y = flattened_id;
+    idBuffer.ids[flattened_id] = flattened_id;
 
     // vec4 gravity = vec4(0, -0.2, 0, 0) * TIME_STEPSIZE2;
     vec4 gravity = vec4(0, -0.05, 0, 0);

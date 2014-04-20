@@ -268,6 +268,7 @@ namespace cloth_4_3_compute
 
     public:
         GLuint vertex_vbo_storage;
+        GLuint id_storage;
 
         /* This is a important constructor for the entire system of particles and constraints*/
         Cloth(float width, float height, int num_particles_width, int num_particles_height) : num_particles_width(num_particles_width), num_particles_height(num_particles_height)
@@ -566,6 +567,7 @@ namespace cloth_4_3_compute
         glUniform4fv(glGetUniformLocation(litShader, "lightModelAmbient"), 1, value_ptr(lightModelAmbient));
 
         glGenBuffers(1, &cloth1.vertex_vbo_storage);
+        glGenBuffers(1, &cloth1.id_storage);
     }
 
 
@@ -682,6 +684,9 @@ namespace cloth_4_3_compute
         ball_time++;
         ball_pos[2] = (float)cos(ball_time / 50.0f) * 7;
 
+        int gg[2304];
+        memset(gg, 0, 2304 * sizeof(int));
+
         std::vector<Particle> particle_copy;
         particle_copy.resize(cloth1.particles.size());
         std::copy(cloth1.particles.begin(), cloth1.particles.end(), particle_copy.begin());
@@ -690,8 +695,10 @@ namespace cloth_4_3_compute
 
         glUseProgram(computeShader);
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, cloth1.vertex_vbo_storage);
-        // glBufferData(GL_SHADER_STORAGE_BUFFER, cloth1.particles.size() * sizeof(Particle), &(cloth1.particles[0]), GL_STREAM_DRAW);
         glBufferData(GL_SHADER_STORAGE_BUFFER, cloth1.particles.size() * sizeof(Particle), &(particle_copy[0]), GL_DYNAMIC_COPY);
+
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, cloth1.id_storage);
+        glBufferData(GL_SHADER_STORAGE_BUFFER, 2304 * sizeof(int), &(gg[0]), GL_DYNAMIC_COPY);
 
         glDispatchCompute(12, 12, 1);
 
@@ -702,7 +709,6 @@ namespace cloth_4_3_compute
         }
 
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, 0);
-
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, 0);
 
         glBindBuffer(GL_ARRAY_BUFFER, cloth1.vertex_vbo_storage);
@@ -712,6 +718,14 @@ namespace cloth_4_3_compute
         memcpy(&particle_copy[0], ptr, particle_copy.size()*sizeof(Particle));
         glUnmapBuffer(GL_ARRAY_BUFFER);
         glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+        glBindBuffer(GL_ARRAY_BUFFER, cloth1.id_storage);
+        int * i = reinterpret_cast<int *>(glMapBufferRange(GL_ARRAY_BUFFER, 0, 2304 * sizeof(int), GL_MAP_READ_BIT));
+
+        memcpy(&gg, i, 2304*sizeof(int));
+        glUnmapBuffer(GL_ARRAY_BUFFER);
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+
 
         for (int i = 0; i < particle_copy.size(); ++i)
         {
