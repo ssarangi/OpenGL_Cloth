@@ -36,6 +36,9 @@
     <None Include="cloth_4_3_compute\vertlet_cs.glsl">
       <Filter>cloth_4_3_compute</Filter>
     </None>
+    <None Include="cloth_4_3_compute\complete_cs.glsl">
+      <Filter>cloth_4_3_compute</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="cloth_4_3_compute">

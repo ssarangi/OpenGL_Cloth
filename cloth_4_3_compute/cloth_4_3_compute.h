@@ -15,6 +15,7 @@
 #include <cmath>
 #include <vector>
 #include <iostream>
+#include <iterator>
 #include "TextResource.h"
 
 namespace cloth_4_3_compute
@@ -50,17 +51,15 @@ namespace cloth_4_3_compute
     class Vertex
     {
     public:
-        vec3 position;
+        vec4 position;
+        vec4 normal;
         vec2 uv;
-        vec3 normal;
     };
 
     GLuint litShader;
     GLuint unlitShader;
 
-    GLuint accumulateForceCS;
-    GLuint constraintCS;
-    GLuint vertletCS;
+    GLuint computeShader;
 
     mat4 projection;
     mat4 view;
@@ -100,24 +99,24 @@ namespace cloth_4_3_compute
     }
 
     /* The particle class represents a particle of mass that can move around in 3D space*/
-    class Particle
+    struct Particle
     {
-    private:
-        vec3 position;
+        vec4 position;
+        vec4 accumulated_normal;
         vec2 uv;
-        vec3 accumulated_normal;
-
-        bool movable; // can the particle move or not ? used to pin parts of the cloth
-
+        vec2 id;
+        vec4 old_pos; // the position of the particle in the previous time step, used as part of the verlet numerical integration scheme
+        vec4 acceleration; // a vector representing the current acceleration of the particle
+        int movable; // can the particle move or not ? used to pin parts of the cloth
         float mass; // the mass of the particle (is always 1 in this example)
-        vec3 old_pos; // the position of the particle in the previous time step, used as part of the verlet numerical integration scheme
-        vec3 acceleration; // a vector representing the current acceleration of the particle
+        int padding1;
+        int padding2;
 
     public:
-        std::vector<int> constraints;
 
-        Particle(vec3 pos) : old_pos(pos), acceleration(vec3(0, 0, 0)), mass(1), movable(true), accumulated_normal(vec3(0, 0, 0))
+        Particle(vec4 pos) : old_pos(pos), acceleration(vec4(0, 0, 0, 0)), mass(1), movable(true), accumulated_normal(vec4(0, 0, 0, 0))
         {
+            id = vec2(-1, -1);
             position = pos;
         }
 
@@ -125,7 +124,7 @@ namespace cloth_4_3_compute
 
         void addForce(vec3 f)
         {
-            acceleration += f / mass;
+            acceleration += glm::vec4(f / mass, 0);
         }
 
         /* This is one of the important methods, where the time is progressed a single step size (TIME_STEPSIZE)
@@ -135,31 +134,31 @@ namespace cloth_4_3_compute
         {
             if (movable)
             {
-                vec3 temp = position;
+                vec4 temp = position;
                 position = position + (position - old_pos)*(1.0f - DAMPING) + acceleration*TIME_STEPSIZE2;
                 old_pos = temp;
-                acceleration = vec3(0, 0, 0); // acceleration is reset since it HAS been translated into a change in position (and implicitely into velocity)	
+                acceleration = vec4(0, 0, 0, 0); // acceleration is reset since it HAS been translated into a change in position (and implicitely into velocity)	
             }
         }
 
-        vec3& getPos() { return position; }
+        vec4& getPos() { return position; }
 
-        void resetAcceleration() { acceleration = vec3(0, 0, 0); }
+        void resetAcceleration() { acceleration = vec4(0, 0, 0, 0); }
 
-        void offsetPos(const vec3 v) { if (movable) position += v; }
+        void offsetPos(const vec4 v) { if (movable) position += v; }
 
         void makeUnmovable() { movable = false; }
 
-        void addToNormal(vec3 normal)
+        void addToNormal(vec4 normal)
         {
             accumulated_normal += normalize(normal);
         }
 
         void setUV(vec2 uv) { this->uv = uv; }
 
-        vec3& getNormal() { return accumulated_normal; } // notice, the normal is not unit length
+        vec4& getNormal() { return accumulated_normal; } // notice, the normal is not unit length
 
-        void resetNormal() { accumulated_normal = vec3(0, 0, 0); }
+        void resetNormal() { accumulated_normal = vec4(0, 0, 0, 0); }
 
     };
 
@@ -172,7 +171,7 @@ namespace cloth_4_3_compute
 
         Constraint(Particle *p1, Particle *p2, uint p1idx, uint p2idx) : p1Idx(p1idx), p2Idx(p2idx)
         {
-            vec3 vec = p1->getPos() - p2->getPos();
+            vec4 vec = p1->getPos() - p2->getPos();
             rest_distance = length(vec);
         }
     };
@@ -202,8 +201,8 @@ namespace cloth_4_3_compute
             uint p1Idx = m_particle2index[p1];
             uint p2Idx = m_particle2index[p2];
     
-            p1->constraints.push_back(p2Idx);
-            p2->constraints.push_back(p1Idx);
+            // p1->constraints.push_back(p2Idx);
+            // p2->constraints.push_back(p1Idx);
 
             constraints.push_back(Constraint(p1, p2, p1Idx, p2Idx));
         }
@@ -214,10 +213,10 @@ namespace cloth_4_3_compute
         {
             Particle* p1 = m_index2particle[pConstraint->p1Idx];
             Particle* p2 = m_index2particle[pConstraint->p2Idx];
-            vec3 p1_to_p2 = p2->getPos() - p1->getPos(); // vector from p1 to p2
+            vec4 p1_to_p2 = p2->getPos() - p1->getPos(); // vector from p1 to p2
             float current_distance = length(p1_to_p2); // current distance between p1 and p2
-            vec3 correctionVector = p1_to_p2*(1 - pConstraint->rest_distance / current_distance); // The offset vector that could moves p1 into a distance of rest_distance to p2
-            vec3 correctionVectorHalf = correctionVector*0.5f; // Lets make it half that length, so that we can move BOTH p1 and p2.
+            vec4 correctionVector = p1_to_p2 * (1 - pConstraint->rest_distance / current_distance); // The offset vector that could moves p1 into a distance of rest_distance to p2
+            vec4 correctionVectorHalf = correctionVector*0.5f; // Lets make it half that length, so that we can move BOTH p1 and p2.
             p1->offsetPos(correctionVectorHalf); // correctionVectorHalf is pointing from p1 to p2, so the length should move p1 half the length needed to satisfy the constraint.
             p2->offsetPos(-correctionVectorHalf); // we must move p2 the negative direction of correctionVectorHalf since it points from p2 to p1, and not p1 to p2.	
         }
@@ -229,14 +228,14 @@ namespace cloth_4_3_compute
         */
         vec3 calcTriangleNormal(Particle *p1, Particle *p2, Particle *p3)
         {
-            vec3 pos1 = p1->getPos();
-            vec3 pos2 = p2->getPos();
-            vec3 pos3 = p3->getPos();
+            vec4 pos1 = p1->getPos();
+            vec4 pos2 = p2->getPos();
+            vec4 pos3 = p3->getPos();
 
-            vec3 v1 = pos2 - pos1;
-            vec3 v2 = pos3 - pos1;
+            vec4 v1 = pos2 - pos1;
+            vec4 v2 = pos3 - pos1;
 
-            return cross(v1, v2);
+            return cross(glm::vec3(v1), glm::vec3(v2));
         }
 
         /* A private method used by windForce() to calcualte the wind force for a single triangle
@@ -254,7 +253,7 @@ namespace cloth_4_3_compute
         /* A private method used by drawShaded(), that draws a single triangle p1,p2,p3 with a color*/
         void insertTriangle(Particle *p1, const vec2 uv, std::vector<Vertex> &vertexData)
         {
-            Vertex v1 = { p1->getPos(), uv, p1->getNormal() };
+            Vertex v1 = { p1->getPos(), p1->getNormal(), uv };
             vertexData.push_back(v1);
         }
 
@@ -276,7 +275,8 @@ namespace cloth_4_3_compute
                         -height * (y / (float)num_particles_height),
                         0);
                     
-                    particles[y*num_particles_width + x] = Particle(pos); // insert particle in column x at y'th row
+                    particles[y*num_particles_width + x] = Particle(glm::vec4(pos.x, pos.y, pos.z, 0.0)); // insert particle in column x at y'th row
+                    // particles[y*num_particles_width + x].id.x = y*num_particles_width + x;
                     m_index2particle[y*num_particles_width + x] = &particles[y*num_particles_width + x];
                     m_particle2index[&particles[y*num_particles_width + x]] = y*num_particles_width + x;
                 }
@@ -322,10 +322,10 @@ namespace cloth_4_3_compute
             // making the upper left most three and right most three particles unmovable
             for (int i = 0; i < 3; i++)
             {
-                getParticle(0 + i, 0)->offsetPos(vec3(0.5, 0.0, 0.0)); // moving the particle a bit towards the center, to make it hang more natural - because I like it ;)
+                getParticle(0 + i, 0)->offsetPos(vec4(0.5, 0.0, 0.0, 0.0)); // moving the particle a bit towards the center, to make it hang more natural - because I like it ;)
                 getParticle(0 + i, 0)->makeUnmovable();
 
-                getParticle(0 + i, 0)->offsetPos(vec3(-0.5, 0.0, 0.0)); // moving the particle a bit towards the center, to make it hang more natural - because I like it ;)
+                getParticle(0 + i, 0)->offsetPos(vec4(-0.5, 0.0, 0.0, 0.0)); // moving the particle a bit towards the center, to make it hang more natural - because I like it ;)
                 getParticle(num_particles_width - 1 - i, 0)->makeUnmovable();
             }
         }
@@ -365,14 +365,14 @@ namespace cloth_4_3_compute
                 for (int y = 0; y < num_particles_height - 1; y++)
                 {
                     vec3 normal = calcTriangleNormal(getParticle(x + 1, y), getParticle(x, y), getParticle(x, y + 1));
-                    getParticle(x + 1, y)->addToNormal(normal);
-                    getParticle(x, y)->addToNormal(normal);
-                    getParticle(x, y + 1)->addToNormal(normal);
+                    getParticle(x + 1, y)->addToNormal(glm::vec4(normal, 0.0));
+                    getParticle(x, y)->addToNormal(glm::vec4(normal, 0.0));
+                    getParticle(x, y + 1)->addToNormal(glm::vec4(normal, 0.0));
 
                     normal = calcTriangleNormal(getParticle(x + 1, y + 1), getParticle(x + 1, y), getParticle(x, y + 1));
-                    getParticle(x + 1, y + 1)->addToNormal(normal);
-                    getParticle(x + 1, y)->addToNormal(normal);
-                    getParticle(x, y + 1)->addToNormal(normal);
+                    getParticle(x + 1, y + 1)->addToNormal(glm::vec4(normal, 0.0));
+                    getParticle(x + 1, y)->addToNormal(glm::vec4(normal, 0.0));
+                    getParticle(x, y + 1)->addToNormal(glm::vec4(normal, 0.0));
                 }
             }
 
@@ -390,9 +390,9 @@ namespace cloth_4_3_compute
                 glEnableVertexAttribArray(positionAttributeLocation);
                 glEnableVertexAttribArray(uvAttributeLocation);
                 glEnableVertexAttribArray(normalAttributeLocation);
-                glVertexAttribPointer(positionAttributeLocation, 3, GL_FLOAT, GL_FALSE, sizeof(Particle), (const GLvoid *)0);
-                glVertexAttribPointer(uvAttributeLocation, 2, GL_FLOAT, GL_FALSE, sizeof(Particle), (const GLvoid *)sizeof(vec3));
-                glVertexAttribPointer(normalAttributeLocation, 3, GL_FLOAT, GL_FALSE, sizeof(Particle), (const GLvoid *)(sizeof(vec3)+sizeof(vec2)));
+                glVertexAttribPointer(positionAttributeLocation, 4, GL_FLOAT, GL_FALSE, sizeof(Particle), (const GLvoid *)0);
+                glVertexAttribPointer(normalAttributeLocation, 4, GL_FLOAT, GL_FALSE, sizeof(Particle), (const GLvoid *)sizeof(vec4));
+                glVertexAttribPointer(uvAttributeLocation, 2, GL_FLOAT, GL_FALSE, sizeof(Particle), (const GLvoid *)(sizeof(vec4)+sizeof(vec4)));
 
                 std::vector<int> indices;
 
@@ -431,7 +431,7 @@ namespace cloth_4_3_compute
             }
 
             glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer);
-            glBufferData(GL_ARRAY_BUFFER, particles.size() * sizeof(Particle), &particles[0], GL_STREAM_DRAW);
+            glBufferData(GL_ARRAY_BUFFER, particles.size() * sizeof(Particle), &particles[0], GL_DYNAMIC_COPY);
 
             mat4 modelView = view;
             mat4 mvp = projection * modelView;
@@ -501,7 +501,7 @@ namespace cloth_4_3_compute
             std::vector<Particle>::iterator particle;
             for (particle = particles.begin(); particle != particles.end(); particle++)
             {
-                vec3 v = (*particle).getPos() - center;
+                vec4 v = (*particle).getPos() - glm::vec4(center, 0.0);
                 float l = length(v);
                 if (length(v) < radius) // if the particle is inside the ball
                 {
@@ -593,7 +593,13 @@ namespace cloth_4_3_compute
                     float cosLong = cos(longitude);
                     vec3 normal = vec3(cosLong * cosLat1, sinLat1, sinLong * cosLat1);
                     vec3 position = normal * radius;
-                    Vertex v = { position, vec2(j / (float)stacks, i / (float)slices), normal };
+                    Vertex v = 
+                    { 
+                        glm::vec4(position, 0.0), 
+                        glm::vec4(normal, 0.0),
+                        vec2(j / (float)stacks, i / (float)slices)
+                    };
+
                     vertexData.push_back(v);
                 }
             }
@@ -635,8 +641,8 @@ namespace cloth_4_3_compute
             glEnableVertexAttribArray(uvAttributeLocation);
             glEnableVertexAttribArray(normalAttributeLocation);
             glVertexAttribPointer(positionAttributeLocation, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (const GLvoid *)0);
-            glVertexAttribPointer(uvAttributeLocation, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (const GLvoid *)sizeof(vec3));
-            glVertexAttribPointer(normalAttributeLocation, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (const GLvoid *)(sizeof(vec3)+sizeof(vec2)));
+            glVertexAttribPointer(normalAttributeLocation, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (const GLvoid *)sizeof(vec4));
+            glVertexAttribPointer(uvAttributeLocation, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (const GLvoid *)(sizeof(vec4)+sizeof(vec4)));
 
             GLuint elementArrayBuffer;
             glGenBuffers(1, &elementArrayBuffer);
@@ -663,14 +669,52 @@ namespace cloth_4_3_compute
     }
 
     /* display method called each frame*/
-    void display(void)
+    void display()
     {
         // calculating positions
+
+        int gg[48 * 48];
+        memset(gg, 0, 48 * 48 * sizeof(int));
 
         ball_time++;
         ball_pos[2] = (float)cos(ball_time / 50.0f) * 7;
 
-        cloth1.addForce(vec3(0, -0.2, 0) * TIME_STEPSIZE2); // add gravity each frame, pointing down
+        // cloth1.addForce(vec3(0, -0.2, 0) * TIME_STEPSIZE2); // add gravity each frame, pointing down
+
+        int sizeofparticle = sizeof(Particle);
+
+        glUseProgram(computeShader);
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, cloth1.vertex_vbo_storage);
+        glBufferData(GL_SHADER_STORAGE_BUFFER, cloth1.particles.size() * sizeof(Particle), &(cloth1.particles[0]), GL_STREAM_DRAW);
+
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, cloth1.constraint_buffer_object);
+        glBufferData(GL_SHADER_STORAGE_BUFFER, 48 * 48 * sizeof(int), &gg[0], GL_STREAM_DRAW);
+
+        glDispatchCompute(12, 12, 1);
+
+        glMemoryBarrier(GL_ALL_BARRIER_BITS);
+
+        {
+            GLenum err = gl3wGetError();
+        }
+
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, 0);
+
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, 0);
+
+        glBindBuffer(GL_ARRAY_BUFFER, cloth1.vertex_vbo_storage);
+        Particle * ptr = reinterpret_cast<Particle *>(glMapBufferRange(GL_ARRAY_BUFFER, 0, cloth1.particles.size() * sizeof(Particle), GL_MAP_READ_BIT));
+
+        memcpy(&cloth1.particles[0], ptr, cloth1.particles.size()*sizeof(Particle));
+        glUnmapBuffer(GL_ARRAY_BUFFER);
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+        //glBindBuffer(GL_ARRAY_BUFFER, cloth1.constraint_buffer_object);
+        //int * pptr = reinterpret_cast<int *>(glMapBufferRange(GL_ARRAY_BUFFER, 0, 48 * 48 * sizeof(int), GL_MAP_READ_BIT));
+
+        //glUnmapBuffer(GL_ARRAY_BUFFER);
+        //glBindBuffer(GL_ARRAY_BUFFER, 0);
+
         cloth1.windForce(vec3(0.5, 0, 0.2) * TIME_STEPSIZE2); // generate some wind each frame
         cloth1.timeStep(); // calculate the particle positions of the next frame
         cloth1.ballCollision(ball_pos, ball_radius); // resolve collision with the ball
@@ -680,37 +724,6 @@ namespace cloth_4_3_compute
         view = mat4(1.0f);
         view = translate(view, vec3(-6.5, 6, -15.0f));
         view = rotate(view, 25.0f, vec3(0, 1, 0));
-        
-        //glUseProgram(accumulateForceCS);
-        //glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, cloth1.vertex_vbo_storage);
-        //glBufferData(GL_SHADER_STORAGE_BUFFER, cloth1.particles.size() * sizeof(Particle), &(cloth1.particles[0]), GL_DYNAMIC_COPY);
-
-        //glDispatchCompute(6, 6, 1);
-
-        //glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, 0);
-
-        //glUseProgram(constraintCS);
-        //glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, cloth1.vertex_vbo_storage);
-        //glBufferData(GL_SHADER_STORAGE_BUFFER, cloth1.particles.size() * sizeof(Particle), &(cloth1.particles[0]), GL_DYNAMIC_COPY);
-
-        //glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, cloth1.constraint_buffer_object);
-        //glBufferData(GL_SHADER_STORAGE_BUFFER, cloth1.constraints.size() * sizeof(Constraint), &(cloth1.constraints[0]), GL_DYNAMIC_COPY);
-
-        //glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, 0);
-        //glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, 0);
-
-        //// glDispatchCompute()
-
-
-        //glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, 0);
-
-        //glBindBuffer(GL_ARRAY_BUFFER, cloth1.vertex_vbo_storage);
-        //Particle * ptr = reinterpret_cast<Particle *>(glMapBufferRange(GL_ARRAY_BUFFER, 0, cloth1.particles.size() * sizeof(Particle), GL_MAP_READ_BIT));
-
-        //memcpy(&cloth1.particles[0], ptr, cloth1.particles.size()*sizeof(Particle));
-        //glUnmapBuffer(GL_ARRAY_BUFFER);
-        //glBindBuffer(GL_ARRAY_BUFFER, 0);
-        
         
         // setup light 
         glUseProgram(litShader);
@@ -859,9 +872,7 @@ namespace cloth_4_3_compute
 
         litShader = loadShader("../cloth_4_3_compute/lambert.vert", "../cloth_4_3_compute/lambert.frag");
         unlitShader = loadShader("../cloth_4_3_compute/unlit.vert", "../cloth_4_3_compute/unlit.frag");
-        //accumulateForceCS = loadComputeShader("../cloth_4_3_compute/accumulateForces_cs.glsl");
-        //constraintCS = loadComputeShader("../cloth_4_3_compute/constraint_cs.glsl");
-        //vertletCS = loadComputeShader("../cloth_4_3_compute/vertlet_cs.glsl");
+        computeShader = loadComputeShader("../cloth_4_3_compute/complete_cs.glsl");
         init();
 
         glutDisplayFunc(display);

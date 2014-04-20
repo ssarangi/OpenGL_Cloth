@@ -20,6 +20,7 @@
     <ClInclude Include="TextResource.h" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="cloth_4_3_compute\complete_cs.glsl" />
     <None Include="cloth_4_3_compute\constraint_cs.glsl" />
     <None Include="cloth_4_3_compute\lambert.frag" />
     <None Include="cloth_4_3_compute\lambert.vert" />
