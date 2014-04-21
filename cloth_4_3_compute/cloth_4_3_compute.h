@@ -114,6 +114,24 @@ namespace cloth_4_3_compute
         uint t2Idx;
         uint t3Idx;
         uint t4Idx;
+
+        uint constraint1;
+        uint constraint2;
+        uint constraint3;
+        uint constraint4;
+        uint constraint5;
+        uint constraint6;
+        uint constraint7;
+        uint constraint8;
+        float constraint1_rest_distance;
+        float constraint2_rest_distance;
+        float constraint3_rest_distance;
+        float constraint4_rest_distance;
+        float constraint5_rest_distance;
+        float constraint6_rest_distance;
+        float constraint7_rest_distance;
+        float constraint8_rest_distance;
+        
         int movable; // can the particle move or not ? used to pin parts of the cloth
         float mass; // the mass of the particle (is always 1 in this example)
         int padding1;
@@ -130,6 +148,14 @@ namespace cloth_4_3_compute
             t2Idx = (y - 1) * width + x;
             t3Idx = y * width + (x + 1);
             t4Idx = (y + 1) * width + x;
+            //constraint1 = -1;
+            //constraint2 = -1;
+            //constraint3 = -1;
+            //constraint4 = -1;
+            //constraint5 = -1;
+            //constraint6 = -1;
+            //constraint7 = -1;
+            //constraint8 = -1;
         }
 
         Particle(){}
@@ -208,12 +234,61 @@ namespace cloth_4_3_compute
         int getParticleIndex(int x, int y) { return y*num_particles_width + x; }
 
         Particle* getParticle(int x, int y) { return &particles[getParticleIndex(x, y)]; }
+
+        void addConstraintToParticle(Particle* p, int index, float rest_distance)
+        {
+            //if (p->constraint1 == -1)
+            //{
+            //    p->constraint1 = index;
+            //    p->constraint1_rest_distance = rest_distance;
+            //}
+            //else if (p->constraint2 == -1)
+            //{
+            //    p->constraint2 = index;
+            //    p->constraint2_rest_distance = rest_distance;
+            //}
+            //else if (p->constraint3 == -1)
+            //{
+            //    p->constraint3 = index;
+            //    p->constraint3_rest_distance = rest_distance;
+            //}
+            //else if (p->constraint4 == -1)
+            //{
+            //    p->constraint4 = index;
+            //    p->constraint4_rest_distance = rest_distance;
+            //}
+            //else if (p->constraint5 == -1)
+            //{
+            //    p->constraint5 = index;
+            //    p->constraint5_rest_distance = rest_distance;
+            //}
+            //else if (p->constraint6 == -1)
+            //{
+            //    p->constraint6 = index;
+            //    p->constraint6_rest_distance = rest_distance;
+            //}
+            //else if (p->constraint7 == -1)
+            //{
+            //    p->constraint7 = index;
+            //    p->constraint7_rest_distance = rest_distance;
+            //}
+            //else if (p->constraint8 == -1)
+            //{
+            //    p->constraint8 = index;
+            //    p->constraint8_rest_distance = rest_distance;
+            //}
+        }
+
         void makeConstraint(Particle *p1, Particle *p2)
         {
             uint p1Idx = m_particle2index[p1];
             uint p2Idx = m_particle2index[p2];
 
-            constraints.push_back(Constraint(p1, p2, p1Idx, p2Idx));
+            Constraint c = Constraint(p1, p2, p1Idx, p2Idx);
+
+            addConstraintToParticle(p1, p2Idx, c.rest_distance);
+            addConstraintToParticle(p2, p1Idx, c.rest_distance);
+            constraints.push_back(c);
         }
 
         /* This is one of the important methods, where a single constraint between two particles p1 and p2 is solved
@@ -285,7 +360,7 @@ namespace cloth_4_3_compute
                         0);
                     
                     particles[y*num_particles_width + x] = Particle(glm::vec4(pos.x, pos.y, pos.z, 0.0), x, y, num_particles_width, num_particles_height); // insert particle in column x at y'th row
-                    // particles[y*num_particles_width + x].id.x = y*num_particles_width + x;
+                    particles[y*num_particles_width + x].id.x = y * num_particles_width + x;
                     m_index2particle[y*num_particles_width + x] = &particles[y*num_particles_width + x];
                     m_particle2index[&particles[y*num_particles_width + x]] = y*num_particles_width + x;
                 }
@@ -680,27 +755,34 @@ namespace cloth_4_3_compute
     /* display method called each frame*/
     void display()
     {
+        bool verify = false;
+
         // calculating positions
         ball_time++;
         ball_pos[2] = (float)cos(ball_time / 50.0f) * 7;
 
-        int gg[2304];
-        memset(gg, 0, 2304 * sizeof(int));
+        vec2 gg[2304];
+        memset(gg, 0, 2304 * sizeof(vec2));
 
         std::vector<Particle> particle_copy;
         particle_copy.resize(cloth1.particles.size());
         std::copy(cloth1.particles.begin(), cloth1.particles.end(), particle_copy.begin());
-
-        cloth1.addForce(vec3(0, -0.2, 0) * TIME_STEPSIZE2); // add gravity each frame, pointing down
+        
+        if (verify)
+            cloth1.addForce(vec3(0, -0.2, 0) * TIME_STEPSIZE2); // add gravity each frame, pointing down
 
         glUseProgram(computeShader);
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, cloth1.vertex_vbo_storage);
-        glBufferData(GL_SHADER_STORAGE_BUFFER, cloth1.particles.size() * sizeof(Particle), &(particle_copy[0]), GL_DYNAMIC_COPY);
+        
+        if (verify)
+            glBufferData(GL_SHADER_STORAGE_BUFFER, cloth1.particles.size() * sizeof(Particle), &(particle_copy[0]), GL_DYNAMIC_COPY);
+        else
+            glBufferData(GL_SHADER_STORAGE_BUFFER, cloth1.particles.size() * sizeof(Particle), &(cloth1.particles[0]), GL_DYNAMIC_COPY);
 
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, cloth1.id_storage);
-        glBufferData(GL_SHADER_STORAGE_BUFFER, 2304 * sizeof(int), &(gg[0]), GL_DYNAMIC_COPY);
+        glBufferData(GL_SHADER_STORAGE_BUFFER, 2304 * sizeof(vec2), &(gg[0]), GL_DYNAMIC_COPY);
 
-        glDispatchCompute(12, 12, 1);
+        glDispatchCompute(144, 1, 1);
 
         glMemoryBarrier(GL_ALL_BARRIER_BITS);
 
@@ -714,29 +796,36 @@ namespace cloth_4_3_compute
         glBindBuffer(GL_ARRAY_BUFFER, cloth1.vertex_vbo_storage);
         Particle * ptr = reinterpret_cast<Particle *>(glMapBufferRange(GL_ARRAY_BUFFER, 0, cloth1.particles.size() * sizeof(Particle), GL_MAP_READ_BIT));
 
-        // memcpy(&cloth1.particles[0], ptr, cloth1.particles.size()*sizeof(Particle));
-        memcpy(&particle_copy[0], ptr, particle_copy.size()*sizeof(Particle));
+        if (verify)
+            memcpy(&particle_copy[0], ptr, particle_copy.size()*sizeof(Particle));
+        else
+            memcpy(&cloth1.particles[0], ptr, cloth1.particles.size()*sizeof(Particle));
+
         glUnmapBuffer(GL_ARRAY_BUFFER);
         glBindBuffer(GL_ARRAY_BUFFER, 0);
 
         glBindBuffer(GL_ARRAY_BUFFER, cloth1.id_storage);
-        int * i = reinterpret_cast<int *>(glMapBufferRange(GL_ARRAY_BUFFER, 0, 2304 * sizeof(int), GL_MAP_READ_BIT));
+        int * i = reinterpret_cast<int *>(glMapBufferRange(GL_ARRAY_BUFFER, 0, 2304 * sizeof(vec2), GL_MAP_READ_BIT));
 
-        memcpy(&gg, i, 2304*sizeof(int));
+        memcpy(&gg, i, 2304*sizeof(vec2));
         glUnmapBuffer(GL_ARRAY_BUFFER);
         glBindBuffer(GL_ARRAY_BUFFER, 0);
 
 
-        for (int i = 0; i < particle_copy.size(); ++i)
+        if (verify)
         {
-            std::cout << particle_copy[i].acceleration.x << " <---> " << cloth1.particles[i].acceleration.x << std::endl;
-            std::cout << particle_copy[i].acceleration.y << " <---> " << cloth1.particles[i].acceleration.y << std::endl;
-            std::cout << particle_copy[i].acceleration.z << " <---> " << cloth1.particles[i].acceleration.z << std::endl;
-            std::cout << particle_copy[i].acceleration.w << " <---> " << cloth1.particles[i].acceleration.w << std::endl;
-            assert(particle_copy[i].acceleration == cloth1.particles[i].acceleration);
+            for (int i = 0; i < particle_copy.size(); ++i)
+            {
+                //std::cout << particle_copy[i].acceleration.x << " <---> " << cloth1.particles[i].acceleration.x << std::endl;
+                //std::cout << particle_copy[i].acceleration.y << " <---> " << cloth1.particles[i].acceleration.y << std::endl;
+                //std::cout << particle_copy[i].acceleration.z << " <---> " << cloth1.particles[i].acceleration.z << std::endl;
+                //std::cout << particle_copy[i].acceleration.w << " <---> " << cloth1.particles[i].acceleration.w << std::endl;
+                //assert(particle_copy[i].position == cloth1.particles[i].position);
+                assert(particle_copy[i].acceleration == cloth1.particles[i].acceleration);
+            }
         }
 
-        cloth1.windForce(vec3(0.5, 0, 0.2) * TIME_STEPSIZE2); // generate some wind each frame
+        // cloth1.windForce(vec3(0.5, 0, 0.2) * TIME_STEPSIZE2); // generate some wind each frame
         cloth1.timeStep(); // calculate the particle positions of the next frame
         cloth1.ballCollision(ball_pos, ball_radius); // resolve collision with the ball
 
@@ -830,6 +919,8 @@ namespace cloth_4_3_compute
             glGetProgramInfoLog(program, logSize, NULL, logMsg);
             std::cerr << logMsg << std::endl;
             delete[] logMsg;
+            system("Pause");
+            exit(0);
         }
     }
 
