@@ -544,14 +544,14 @@ namespace cloth_4_3_compute
         */
         void timeStep()
         {
-            std::vector<Constraint>::iterator constraint;
-            for (int i = 0; i < CONSTRAINT_ITERATIONS; i++) // iterate over all constraints several times
-            {
-                for (constraint = constraints.begin(); constraint != constraints.end(); constraint++)
-                {
-                    satisfyConstraint(&(*constraint)); // satisfy constraint.
-                }
-            }
+            //std::vector<Constraint>::iterator constraint;
+            //for (int i = 0; i < CONSTRAINT_ITERATIONS; i++) // iterate over all constraints several times
+            //{
+            //    for (constraint = constraints.begin(); constraint != constraints.end(); constraint++)
+            //    {
+            //        satisfyConstraint(&(*constraint)); // satisfy constraint.
+            //    }
+            //}
 
             std::vector<Particle>::iterator particle;
             for (particle = particles.begin(); particle != particles.end(); particle++)
@@ -763,7 +763,7 @@ namespace cloth_4_3_compute
     /* display method called each frame*/
     void display()
     {
-        bool verify = true;
+        bool verify = false;
 
         // calculating positions
         ball_time++;

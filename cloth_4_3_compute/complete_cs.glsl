@@ -134,6 +134,8 @@ void satisfyConstraintForConnectedConstraint(unsigned int particleID, unsigned i
     barrier();
     offsetPos(correctionVectorHalf, particleID);
     offsetPos(-correctionVectorHalf, constraintID);
+    memoryBarrier();
+    barrier();
 }
 
 void satisfyConstraint(unsigned int particleID)
