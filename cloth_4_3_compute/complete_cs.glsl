@@ -115,52 +115,53 @@ void addWindForce(vec4 wind, unsigned int particleID)
 }
 
 // ------------------------------------------------------ Satisfy Constraint -----------------------------------------//
-//void satisfyConstraintForConnectedConstraint(unsigned int particleID, unsigned int constraintID, float rest_distance)
-//{
-//    if (constraintID == -1)
-//        return;
+void satisfyConstraintForConnectedConstraint(unsigned int particleID, unsigned int constraintID, float rest_distance)
+{
+    if (constraintID == -1)
+        return;
 
-//    vec4 p1Pos = particleBuffer.particles[particleID].position;
-//    vec4 p2Pos = particleBuffer.particles[constraintID].position;
+    vec4 p1Pos = particleBuffer.particles[particleID].position;
+    vec4 p2Pos = particleBuffer.particles[constraintID].position;
 
-//    vec4 p1_to_p2 = p2Pos - p1Pos;
-//    float current_distance = length(p1_to_p2);
-//    vec4 correctionVector = p1_to_p2 * (1 - rest_distance / current_distance);
-//    vec4 correctionVectorHalf = correctionVector * 0.5f;
+    vec4 p1_to_p2 = p2Pos - p1Pos;
+    float current_distance = length(p1_to_p2);
+    vec4 correctionVector = p1_to_p2 * (1 - rest_distance / current_distance);
+    vec4 correctionVectorHalf = (correctionVector * 0.5f) * 0.00001;
 
-//    barrier();
-//    // offsetPos(correctionVectorHalf, particleID);
-//}
+    barrier();
+    // offsetPos(correctionVectorHalf, particleID);
+    // offsetPos(correctionVectorHalf, constraintID);
+}
 
-//void satisfyConstraint(unsigned int particleID)
-//{
-//    uint constraint1 = particleBuffer.particles[particleID].constraint1;
-//    uint constraint2 = particleBuffer.particles[particleID].constraint2;
-//    uint constraint3 = particleBuffer.particles[particleID].constraint3;
-//    uint constraint4 = particleBuffer.particles[particleID].constraint4;
-//    uint constraint5 = particleBuffer.particles[particleID].constraint5;
-//    uint constraint6 = particleBuffer.particles[particleID].constraint6;
-//    uint constraint7 = particleBuffer.particles[particleID].constraint7;
-//    uint constraint8 = particleBuffer.particles[particleID].constraint8;
+void satisfyConstraint(unsigned int particleID)
+{
+    uint constraint1 = particleBuffer.particles[particleID].constraint1;
+    uint constraint2 = particleBuffer.particles[particleID].constraint2;
+    uint constraint3 = particleBuffer.particles[particleID].constraint3;
+    uint constraint4 = particleBuffer.particles[particleID].constraint4;
+    uint constraint5 = particleBuffer.particles[particleID].constraint5;
+    uint constraint6 = particleBuffer.particles[particleID].constraint6;
+    uint constraint7 = particleBuffer.particles[particleID].constraint7;
+    uint constraint8 = particleBuffer.particles[particleID].constraint8;
 
-//    float rest_distance_1 = particleBuffer.particles[particleID].constraint1_rest_distance;
-//    float rest_distance_2 = particleBuffer.particles[particleID].constraint2_rest_distance;
-//    float rest_distance_3 = particleBuffer.particles[particleID].constraint3_rest_distance;
-//    float rest_distance_4 = particleBuffer.particles[particleID].constraint4_rest_distance;
-//    float rest_distance_5 = particleBuffer.particles[particleID].constraint5_rest_distance;
-//    float rest_distance_6 = particleBuffer.particles[particleID].constraint6_rest_distance;
-//    float rest_distance_7 = particleBuffer.particles[particleID].constraint7_rest_distance;
-//    float rest_distance_8 = particleBuffer.particles[particleID].constraint8_rest_distance;
+    float rest_distance_1 = particleBuffer.particles[particleID].constraint1_rest_distance;
+    float rest_distance_2 = particleBuffer.particles[particleID].constraint2_rest_distance;
+    float rest_distance_3 = particleBuffer.particles[particleID].constraint3_rest_distance;
+    float rest_distance_4 = particleBuffer.particles[particleID].constraint4_rest_distance;
+    float rest_distance_5 = particleBuffer.particles[particleID].constraint5_rest_distance;
+    float rest_distance_6 = particleBuffer.particles[particleID].constraint6_rest_distance;
+    float rest_distance_7 = particleBuffer.particles[particleID].constraint7_rest_distance;
+    float rest_distance_8 = particleBuffer.particles[particleID].constraint8_rest_distance;
 
-//    satisfyConstraintForConnectedConstraint(particleID, constraint1, rest_distance_1);
-//    satisfyConstraintForConnectedConstraint(particleID, constraint2, rest_distance_2);
-//    satisfyConstraintForConnectedConstraint(particleID, constraint3, rest_distance_3);
-//    satisfyConstraintForConnectedConstraint(particleID, constraint4, rest_distance_4);
-//    satisfyConstraintForConnectedConstraint(particleID, constraint5, rest_distance_5);
-//    satisfyConstraintForConnectedConstraint(particleID, constraint6, rest_distance_6);
-//    satisfyConstraintForConnectedConstraint(particleID, constraint7, rest_distance_7);
-//    satisfyConstraintForConnectedConstraint(particleID, constraint8, rest_distance_8);
-//}
+    satisfyConstraintForConnectedConstraint(particleID, constraint1, rest_distance_1);
+    satisfyConstraintForConnectedConstraint(particleID, constraint2, rest_distance_2);
+    satisfyConstraintForConnectedConstraint(particleID, constraint3, rest_distance_3);
+    satisfyConstraintForConnectedConstraint(particleID, constraint4, rest_distance_4);
+    satisfyConstraintForConnectedConstraint(particleID, constraint5, rest_distance_5);
+    satisfyConstraintForConnectedConstraint(particleID, constraint6, rest_distance_6);
+    satisfyConstraintForConnectedConstraint(particleID, constraint7, rest_distance_7);
+    satisfyConstraintForConnectedConstraint(particleID, constraint8, rest_distance_8);
+}
 
 //--------------------------------------------------------------------------------------------------------------------//
 
@@ -198,7 +199,7 @@ void main()
     vec4 windForce = vec4(0.5, 0, 0.2, 0.0) * TIME_STEPSIZE2;
     addWindForce(windForce, flattened_id);
 
-    //satisfyConstraint(flattened_id);
+    // satisfyConstraint(flattened_id);
 
     //vertlet(flattened_id);
     //ballCollision(flattened_id);

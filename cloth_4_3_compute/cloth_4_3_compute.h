@@ -237,46 +237,46 @@ namespace cloth_4_3_compute
 
         void addConstraintToParticle(Particle* p, int index, float rest_distance)
         {
-            //if (p->constraint1 == -1)
-            //{
-            //    p->constraint1 = index;
-            //    p->constraint1_rest_distance = rest_distance;
-            //}
-            //else if (p->constraint2 == -1)
-            //{
-            //    p->constraint2 = index;
-            //    p->constraint2_rest_distance = rest_distance;
-            //}
-            //else if (p->constraint3 == -1)
-            //{
-            //    p->constraint3 = index;
-            //    p->constraint3_rest_distance = rest_distance;
-            //}
-            //else if (p->constraint4 == -1)
-            //{
-            //    p->constraint4 = index;
-            //    p->constraint4_rest_distance = rest_distance;
-            //}
-            //else if (p->constraint5 == -1)
-            //{
-            //    p->constraint5 = index;
-            //    p->constraint5_rest_distance = rest_distance;
-            //}
-            //else if (p->constraint6 == -1)
-            //{
-            //    p->constraint6 = index;
-            //    p->constraint6_rest_distance = rest_distance;
-            //}
-            //else if (p->constraint7 == -1)
-            //{
-            //    p->constraint7 = index;
-            //    p->constraint7_rest_distance = rest_distance;
-            //}
-            //else if (p->constraint8 == -1)
-            //{
-            //    p->constraint8 = index;
-            //    p->constraint8_rest_distance = rest_distance;
-            //}
+            if (p->constraint1 == -1)
+            {
+                p->constraint1 = index;
+                p->constraint1_rest_distance = rest_distance;
+            }
+            else if (p->constraint2 == -1)
+            {
+                p->constraint2 = index;
+                p->constraint2_rest_distance = rest_distance;
+            }
+            else if (p->constraint3 == -1)
+            {
+                p->constraint3 = index;
+                p->constraint3_rest_distance = rest_distance;
+            }
+            else if (p->constraint4 == -1)
+            {
+                p->constraint4 = index;
+                p->constraint4_rest_distance = rest_distance;
+            }
+            else if (p->constraint5 == -1)
+            {
+                p->constraint5 = index;
+                p->constraint5_rest_distance = rest_distance;
+            }
+            else if (p->constraint6 == -1)
+            {
+                p->constraint6 = index;
+                p->constraint6_rest_distance = rest_distance;
+            }
+            else if (p->constraint7 == -1)
+            {
+                p->constraint7 = index;
+                p->constraint7_rest_distance = rest_distance;
+            }
+            else if (p->constraint8 == -1)
+            {
+                p->constraint8 = index;
+                p->constraint8_rest_distance = rest_distance;
+            }
         }
 
         void makeConstraint(Particle *p1, Particle *p2)
