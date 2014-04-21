@@ -287,7 +287,7 @@ namespace cloth_4_3_compute
             Constraint c = Constraint(p1, p2, p1Idx, p2Idx);
 
             addConstraintToParticle(p1, p2Idx, c.rest_distance);
-            addConstraintToParticle(p2, p1Idx, c.rest_distance);
+            // addConstraintToParticle(p2, p1Idx, c.rest_distance);
             constraints.push_back(c);
         }
 
@@ -536,14 +536,14 @@ namespace cloth_4_3_compute
         */
         void timeStep()
         {
-            std::vector<Constraint>::iterator constraint;
-            for (int i = 0; i < CONSTRAINT_ITERATIONS; i++) // iterate over all constraints several times
-            {
-                for (constraint = constraints.begin(); constraint != constraints.end(); constraint++)
-                {
-                    satisfyConstraint(&(*constraint)); // satisfy constraint.
-                }
-            }
+            //std::vector<Constraint>::iterator constraint;
+            //for (int i = 0; i < CONSTRAINT_ITERATIONS; i++) // iterate over all constraints several times
+            //{
+            //    for (constraint = constraints.begin(); constraint != constraints.end(); constraint++)
+            //    {
+            //        satisfyConstraint(&(*constraint)); // satisfy constraint.
+            //    }
+            //}
 
             std::vector<Particle>::iterator particle;
             for (particle = particles.begin(); particle != particles.end(); particle++)

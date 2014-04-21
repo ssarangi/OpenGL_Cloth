@@ -129,8 +129,8 @@ void satisfyConstraintForConnectedConstraint(unsigned int particleID, unsigned i
     vec4 correctionVectorHalf = (correctionVector * 0.5f) * 0.00001;
 
     barrier();
-    // offsetPos(correctionVectorHalf, particleID);
-    // offsetPos(correctionVectorHalf, constraintID);
+    offsetPos(correctionVectorHalf, particleID);
+    offsetPos(-correctionVectorHalf, constraintID);
 }
 
 void satisfyConstraint(unsigned int particleID)
@@ -199,7 +199,7 @@ void main()
     vec4 windForce = vec4(0.5, 0, 0.2, 0.0) * TIME_STEPSIZE2;
     addWindForce(windForce, flattened_id);
 
-    // satisfyConstraint(flattened_id);
+    satisfyConstraint(flattened_id);
 
     //vertlet(flattened_id);
     //ballCollision(flattened_id);
