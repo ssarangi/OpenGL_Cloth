@@ -110,19 +110,19 @@ namespace cloth_4_3_compute
         vec2 id;
         vec4 old_pos; // the position of the particle in the previous time step, used as part of the verlet numerical integration scheme
         vec4 acceleration; // a vector representing the current acceleration of the particle
-        uint t1Idx;
-        uint t2Idx;
-        uint t3Idx;
-        uint t4Idx;
+        int t1Idx;
+        int t2Idx;
+        int t3Idx;
+        int t4Idx;
 
-        uint constraint1;
-        uint constraint2;
-        uint constraint3;
-        uint constraint4;
-        uint constraint5;
-        uint constraint6;
-        uint constraint7;
-        uint constraint8;
+        int constraint1;
+        int constraint2;
+        int constraint3;
+        int constraint4;
+        int constraint5;
+        int constraint6;
+        int constraint7;
+        int constraint8;
         float constraint1_rest_distance;
         float constraint2_rest_distance;
         float constraint3_rest_distance;
@@ -148,14 +148,22 @@ namespace cloth_4_3_compute
             t2Idx = (y - 1) * width + x;
             t3Idx = y * width + (x + 1);
             t4Idx = (y + 1) * width + x;
-            //constraint1 = -1;
-            //constraint2 = -1;
-            //constraint3 = -1;
-            //constraint4 = -1;
-            //constraint5 = -1;
-            //constraint6 = -1;
-            //constraint7 = -1;
-            //constraint8 = -1;
+            constraint1 = -1;
+            constraint2 = -1;
+            constraint3 = -1;
+            constraint4 = -1;
+            constraint5 = -1;
+            constraint6 = -1;
+            constraint7 = -1;
+            constraint8 = -1;
+            constraint1_rest_distance = 0.0f;
+            constraint2_rest_distance = 0.0f;
+            constraint3_rest_distance = 0.0f;
+            constraint4_rest_distance = 0.0f;
+            constraint5_rest_distance = 0.0f;
+            constraint6_rest_distance = 0.0f;
+            constraint7_rest_distance = 0.0f;
+            constraint8_rest_distance = 0.0f;
         }
 
         Particle(){}
@@ -536,14 +544,14 @@ namespace cloth_4_3_compute
         */
         void timeStep()
         {
-            //std::vector<Constraint>::iterator constraint;
-            //for (int i = 0; i < CONSTRAINT_ITERATIONS; i++) // iterate over all constraints several times
-            //{
-            //    for (constraint = constraints.begin(); constraint != constraints.end(); constraint++)
-            //    {
-            //        satisfyConstraint(&(*constraint)); // satisfy constraint.
-            //    }
-            //}
+            std::vector<Constraint>::iterator constraint;
+            for (int i = 0; i < CONSTRAINT_ITERATIONS; i++) // iterate over all constraints several times
+            {
+                for (constraint = constraints.begin(); constraint != constraints.end(); constraint++)
+                {
+                    satisfyConstraint(&(*constraint)); // satisfy constraint.
+                }
+            }
 
             std::vector<Particle>::iterator particle;
             for (particle = particles.begin(); particle != particles.end(); particle++)
@@ -755,7 +763,7 @@ namespace cloth_4_3_compute
     /* display method called each frame*/
     void display()
     {
-        bool verify = false;
+        bool verify = true;
 
         // calculating positions
         ball_time++;

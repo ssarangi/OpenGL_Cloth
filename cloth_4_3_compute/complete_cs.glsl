@@ -11,19 +11,19 @@ struct Particle
     vec2 id;
     vec4 old_pos; // the position of the particle in the previous time step, used as part of the verlet numerical integration scheme
     vec4 acceleration; // a vector representing the current acceleration of the particle
-    uint t1Idx;
-    uint t2Idx;
-    uint t3Idx;
-    uint t4Idx;
+    int t1Idx;
+    int t2Idx;
+    int t3Idx;
+    int t4Idx;
 
-    uint constraint1;
-    uint constraint2;
-    uint constraint3;
-    uint constraint4;
-    uint constraint5;
-    uint constraint6;
-    uint constraint7;
-    uint constraint8;
+    int constraint1;
+    int constraint2;
+    int constraint3;
+    int constraint4;
+    int constraint5;
+    int constraint6;
+    int constraint7;
+    int constraint8;
     float constraint1_rest_distance;
     float constraint2_rest_distance;
     float constraint3_rest_distance;
@@ -110,8 +110,11 @@ void addWindForce(vec4 wind, unsigned int particleID)
 {
     Particle p = particleBuffer.particles[particleID];
 
-    addWindForcesForTriangle(wind, p.t1Idx, particleID, p.t2Idx);
-    addWindForcesForTriangle(wind, p.t3Idx, particleID, p.t4Idx);
+    if (p.t1Idx >= 0 && p.t2Idx >= 0)
+        addWindForcesForTriangle(wind, p.t1Idx, particleID, p.t2Idx);
+
+    if (p.t3Idx >= 0 && p.t4Idx >= 0)
+        addWindForcesForTriangle(wind, p.t3Idx, particleID, p.t4Idx);
 }
 
 // ------------------------------------------------------ Satisfy Constraint -----------------------------------------//
