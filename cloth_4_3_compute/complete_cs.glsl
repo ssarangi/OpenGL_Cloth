@@ -1,5 +1,7 @@
 #version 430
 
+layout (local_size_x = 16, local_size_y = 1) in;
+
 #define DAMPING 0.01f // how much to damp the cloth simulation each frame
 #define TIME_STEPSIZE2 0.5f*0.5f // how large time step each particle takes each frame
 
@@ -129,7 +131,7 @@ void satisfyConstraintForConnectedConstraint(unsigned int particleID, unsigned i
     vec4 p1_to_p2 = p2Pos - p1Pos;
     float current_distance = length(p1_to_p2);
     vec4 correctionVector = p1_to_p2 * (1 - rest_distance / current_distance);
-    vec4 correctionVectorHalf = (correctionVector * 0.5f) * 0.00001;
+    vec4 correctionVectorHalf = (correctionVector * 0.5f) * 0.00000001;
 
     barrier();
     offsetPos(correctionVectorHalf, particleID);
@@ -172,7 +174,7 @@ void satisfyConstraint(unsigned int particleID)
 
 void vertlet(unsigned int particleID)
 {
-    if (particleBuffer.particles[particleID].movable)
+    if (particleBuffer.particles[particleID].movable == 1)
     {
         vec4 temp = particleBuffer.particles[particleID].position;
         vec4 old_pos = particleBuffer.particles[particleID].old_pos;
@@ -189,8 +191,6 @@ void ballCollision(unsigned int particleID)
 
 }
 
-layout (local_size_x = 16, local_size_y = 1) in;
-
 void main()
 {
     uint flattened_id = get_invocation();
@@ -201,10 +201,10 @@ void main()
     vec4 gravity = vec4(0, -0.2, 0, 0) * TIME_STEPSIZE2;
     addGravity(gravity, flattened_id);
     
-    vec4 windForce = vec4(0.5, 0, 0.2, 0.0) * TIME_STEPSIZE2;
-    addWindForce(windForce, flattened_id);
+    //vec4 windForce = vec4(0.5, 0, 0.2, 0.0) * TIME_STEPSIZE2;
+    //addWindForce(windForce, flattened_id);
 
-    satisfyConstraint(flattened_id);
+    //satisfyConstraint(flattened_id);
 
     //vertlet(flattened_id);
     //ballCollision(flattened_id);

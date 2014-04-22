@@ -16,6 +16,7 @@
 #include <vector>
 #include <iostream>
 #include <iterator>
+#include <stdlib.h>
 #include "TextResource.h"
 
 namespace cloth_4_3_compute
@@ -63,6 +64,7 @@ namespace cloth_4_3_compute
     GLuint unlitShader;
 
     GLuint computeShader;
+    GLuint constraintCSShader;
 
     mat4 projection;
     mat4 view;
@@ -215,6 +217,10 @@ namespace cloth_4_3_compute
         int p2Idx;
         float rest_distance; // the length between particle p1 and p2 in rest configuration
 
+        Constraint(uint p1idx, uint p2idx, float rest_dist) : p1Idx(p1idx), p2Idx(p2idx), rest_distance(rest_dist)
+        {
+        }
+
         Constraint(Particle *p1, Particle *p2, uint p1idx, uint p2idx) : p1Idx(p1idx), p2Idx(p2idx)
         {
             vec4 vec = p1->getPos() - p2->getPos();
@@ -225,8 +231,8 @@ namespace cloth_4_3_compute
     struct Cloth
     {
     public:
-        GLuint vertexArrayObject = 0;
-        GLuint vertexBuffer = 0;
+        GLuint vertexArrayObject;
+        GLuint vertexBuffer;
         GLuint texture;
         int elementSize;
 
@@ -242,6 +248,136 @@ namespace cloth_4_3_compute
         int getParticleIndex(int x, int y) { return y*num_particles_width + x; }
 
         Particle* getParticle(int x, int y) { return &particles[getParticleIndex(x, y)]; }
+        
+        float get_rest_distance(int p1idx, int p2idx)
+        {
+            Particle* p1 = m_index2particle[p1idx];
+            Particle* p2 = m_index2particle[p2idx];
+            vec4 vec = p1->getPos() - p2->getPos();
+            float rest_distance = length(vec);
+            return rest_distance;
+        }
+
+
+        std::vector<Constraint> make_horizontal_links(int width, int height, int stagger)
+        {
+            std::vector<Constraint> constraints;
+
+            for (uint y = 0; y < height; ++y)
+            {
+                for (uint x = 0; x < width; x+=2)
+                {
+                    int link_id = y * width + x + stagger;
+                    if (x + stagger + 1 < width)
+                        constraints.push_back(Constraint(link_id, link_id + 1, get_rest_distance(link_id, link_id + 1)));
+                }
+            }
+
+            return constraints;
+        }
+
+        std::vector<Constraint> make_vertical_links(int width, int height, int stagger)
+        {
+            std::vector<Constraint> constraints;
+
+            for (uint x = 0; x < width; ++x)
+            {
+                for (uint y = 0; y < height; y+=2)
+                {
+                    int link_id = (y + stagger) * width + x;
+                    if (y + stagger + 1 < height)
+                        constraints.push_back(Constraint(link_id, link_id + width, get_rest_distance(link_id, link_id + width)));
+                }
+            }
+
+            return constraints;
+        }
+
+        std::vector<Constraint> make_forward_diagonal_links(int width, int height, int stagger)
+        {
+            std::vector<Constraint> constraints;
+
+            for (uint x = 0; x < width; ++x)
+            {
+                for (uint y = 0; y < height; y+=2)
+                {
+                    int link_id = (y + stagger) * width + x;
+                    if (x + 1 < width && y + stagger + 1 < height)
+                        constraints.push_back(Constraint(link_id, link_id + 1 + width, get_rest_distance(link_id, link_id + 1 + width)));
+                }
+            }
+
+            return constraints;
+        }
+
+        std::vector<Constraint> make_backward_diagonal_links(int width, int height, int stagger)
+        {
+            std::vector<Constraint> constraints;
+
+            for (uint x = 0; x < width; ++x)
+            {
+                for (uint y = 0; y < height; y+=2)
+                {
+                    int link_id = (y + stagger) * width + x + 1;
+                    if (x + 1 < width && y + stagger + 1 < height)
+                        constraints.push_back(Constraint(link_id, link_id + width - 1, get_rest_distance(link_id, link_id + width - 1)));
+                }
+            }
+
+            return constraints;
+        }
+
+        std::vector<Constraint> make_horizontal_bend_diagonal_links(int width, int height, int x)
+        {
+            std::vector<Constraint> constraints;
+
+                for (uint y = 0; y < height; ++y)
+                {
+                    int link_id = y * width + x;
+                    constraints.push_back(Constraint(link_id, link_id + 2, get_rest_distance(link_id, link_id + 2)));
+                }
+
+            return constraints;
+        }
+
+        std::vector<Constraint> make_vertical_bend_diagonal_links(int width, int y)
+        {
+            std::vector<Constraint> constraints;
+
+            for (uint x = 0; x < width; ++x)
+            {
+                int link_id = y * width + x;
+                constraints.push_back(Constraint(link_id, link_id + 2 * width, get_rest_distance(link_id, link_id + 2 * width)));
+            }
+
+            return constraints;
+        }
+
+        std::vector<std::vector<Constraint>> make_all_constraints(int width, int height)
+        {
+            std::vector<std::vector<Constraint>> all_constraints;
+            all_constraints.push_back(make_horizontal_links(width, height, 0));
+            all_constraints.push_back(make_horizontal_links(width, height, 1));
+
+            all_constraints.push_back(make_vertical_links(width, height, 0));
+            all_constraints.push_back(make_vertical_links(width, height, 1));
+
+
+            all_constraints.push_back(make_forward_diagonal_links(width, height, 0));
+            all_constraints.push_back(make_forward_diagonal_links(width, height, 1));
+
+            all_constraints.push_back(make_backward_diagonal_links(width, height, 0));
+            all_constraints.push_back(make_backward_diagonal_links(width, height, 1));
+
+            for (uint x = 0; x < width - 2; ++x)
+                all_constraints.push_back(make_horizontal_bend_diagonal_links(width, height, x));
+
+            for (uint y = 0; y < height - 2; ++y)
+                all_constraints.push_back(make_vertical_bend_diagonal_links(width, y));
+
+            return all_constraints;
+        }
+
 
         void addConstraintToParticle(Particle* p, int index, float rest_distance)
         {
@@ -284,6 +420,10 @@ namespace cloth_4_3_compute
             {
                 p->constraint8 = index;
                 p->constraint8_rest_distance = rest_distance;
+            }
+            else
+            {
+                assert(0 && "More needed");
             }
         }
 
@@ -352,10 +492,18 @@ namespace cloth_4_3_compute
     public:
         GLuint vertex_vbo_storage;
         GLuint id_storage;
+        GLuint constraints_storage;
+
+        std::vector<std::vector<Constraint>> m_constraintsList;
 
         /* This is a important constructor for the entire system of particles and constraints*/
         Cloth(float width, float height, int num_particles_width, int num_particles_height) : num_particles_width(num_particles_width), num_particles_height(num_particles_height)
         {
+
+            vertex_vbo_storage = 0;
+            vertexBuffer = 0;
+            constraints_storage = 0;
+
             particles.resize(num_particles_width*num_particles_height); //I am essentially using this vector as an array with room for num_particles_width*num_particles_height particles
 
             // creating particles in a grid of particles from (0,0,0) to (width,-height,0)
@@ -420,6 +568,8 @@ namespace cloth_4_3_compute
                 getParticle(0 + i, 0)->offsetPos(vec4(-0.5, 0.0, 0.0, 0.0)); // moving the particle a bit towards the center, to make it hang more natural - because I like it ;)
                 getParticle(num_particles_width - 1 - i, 0)->makeUnmovable();
             }
+
+            m_constraintsList = make_all_constraints(num_particles_width, num_particles_height);
         }
 
         ~Cloth()
@@ -651,6 +801,7 @@ namespace cloth_4_3_compute
 
         glGenBuffers(1, &cloth1.vertex_vbo_storage);
         glGenBuffers(1, &cloth1.id_storage);
+        glGenBuffers(1, &cloth1.constraints_storage);
     }
 
 
@@ -776,8 +927,7 @@ namespace cloth_4_3_compute
         particle_copy.resize(cloth1.particles.size());
         std::copy(cloth1.particles.begin(), cloth1.particles.end(), particle_copy.begin());
         
-        if (verify)
-            cloth1.addForce(vec3(0, -0.2, 0) * TIME_STEPSIZE2); // add gravity each frame, pointing down
+        // cloth1.addForce(vec3(0, -0.2, 0) * TIME_STEPSIZE2); // add gravity each frame, pointing down
 
         glUseProgram(computeShader);
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, cloth1.vertex_vbo_storage);
@@ -820,20 +970,47 @@ namespace cloth_4_3_compute
         glBindBuffer(GL_ARRAY_BUFFER, 0);
 
 
-        if (verify)
+        //if (verify)
+        //{
+        //    for (int i = 0; i < particle_copy.size(); ++i)
+        //    {
+        //        //std::cout << particle_copy[i].acceleration.x << " <---> " << cloth1.particles[i].acceleration.x << std::endl;
+        //        //std::cout << particle_copy[i].acceleration.y << " <---> " << cloth1.particles[i].acceleration.y << std::endl;
+        //        //std::cout << particle_copy[i].acceleration.z << " <---> " << cloth1.particles[i].acceleration.z << std::endl;
+        //        //std::cout << particle_copy[i].acceleration.w << " <---> " << cloth1.particles[i].acceleration.w << std::endl;
+        //        //assert(particle_copy[i].position == cloth1.particles[i].position);
+        //        assert(particle_copy[i].acceleration == cloth1.particles[i].acceleration);
+        //    }
+        //}
+
+        cloth1.windForce(vec3(0.5, 0, 0.2) * TIME_STEPSIZE2); // generate some wind each frame
+
+        glUseProgram(constraintCSShader);
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, cloth1.vertex_vbo_storage);
+        glBufferData(GL_SHADER_STORAGE_BUFFER, cloth1.particles.size() * sizeof(Particle), &(cloth1.particles[0]), GL_DYNAMIC_COPY);
+        
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, cloth1.constraints_storage);
+        
+        for (uint iter = 0; iter < 15; ++iter)
         {
-            for (int i = 0; i < particle_copy.size(); ++i)
+            for (uint i = 0; i < cloth1.m_constraintsList.size(); ++i)
             {
-                //std::cout << particle_copy[i].acceleration.x << " <---> " << cloth1.particles[i].acceleration.x << std::endl;
-                //std::cout << particle_copy[i].acceleration.y << " <---> " << cloth1.particles[i].acceleration.y << std::endl;
-                //std::cout << particle_copy[i].acceleration.z << " <---> " << cloth1.particles[i].acceleration.z << std::endl;
-                //std::cout << particle_copy[i].acceleration.w << " <---> " << cloth1.particles[i].acceleration.w << std::endl;
-                //assert(particle_copy[i].position == cloth1.particles[i].position);
-                assert(particle_copy[i].acceleration == cloth1.particles[i].acceleration);
+                glBufferData(GL_SHADER_STORAGE_BUFFER, cloth1.m_constraintsList[i].size() * sizeof(Constraint), &(cloth1.m_constraintsList[i][0]), GL_DYNAMIC_COPY);
+                glDispatchCompute(cloth1.m_constraintsList[i].size(), 1, 1);
             }
         }
 
-        // cloth1.windForce(vec3(0.5, 0, 0.2) * TIME_STEPSIZE2); // generate some wind each frame
+        glMemoryBarrier(GL_ALL_BARRIER_BITS);
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, 0);
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, 0);
+
+        glBindBuffer(GL_ARRAY_BUFFER, cloth1.vertex_vbo_storage);
+        ptr = reinterpret_cast<Particle *>(glMapBufferRange(GL_ARRAY_BUFFER, 0, cloth1.particles.size() * sizeof(Particle), GL_MAP_READ_BIT));
+        memcpy(&cloth1.particles[0], ptr, cloth1.particles.size()*sizeof(Particle));
+
+        glUnmapBuffer(GL_ARRAY_BUFFER);
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+
         cloth1.timeStep(); // calculate the particle positions of the next frame
         cloth1.ballCollision(ball_pos, ball_radius); // resolve collision with the ball
 
@@ -993,6 +1170,8 @@ namespace cloth_4_3_compute
         litShader = loadShader("../cloth_4_3_compute/lambert.vert", "../cloth_4_3_compute/lambert.frag");
         unlitShader = loadShader("../cloth_4_3_compute/unlit.vert", "../cloth_4_3_compute/unlit.frag");
         computeShader = loadComputeShader("../cloth_4_3_compute/complete_cs.glsl");
+        constraintCSShader = loadComputeShader("../cloth_4_3_compute/constraints_cs.glsl");
+        
         init();
 
         glutDisplayFunc(display);
