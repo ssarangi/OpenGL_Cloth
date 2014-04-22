@@ -1,4 +1,4 @@
-/**
+﻿/**
 * Based on "Mosegaards Cloth Simulation Coding Tutorial" ( http://cg.alexandra.dk/2009/06/02/mosegaards-cloth-simulation-coding-tutorial/ )
 */
 
@@ -65,6 +65,7 @@ namespace cloth_4_3_compute
 
     GLuint computeShader;
     GLuint constraintCSShader;
+    GLuint vertletCSShader;
 
     mat4 projection;
     mat4 view;
@@ -983,7 +984,7 @@ namespace cloth_4_3_compute
         //    }
         //}
 
-        cloth1.windForce(vec3(0.5, 0, 0.2) * TIME_STEPSIZE2); // generate some wind each frame
+        // cloth1.windForce(vec3(0.5, 0, 0.2) * TIME_STEPSIZE2); // generate some wind each frame
 
         glUseProgram(constraintCSShader);
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, cloth1.vertex_vbo_storage);
@@ -996,7 +997,7 @@ namespace cloth_4_3_compute
             for (uint i = 0; i < cloth1.m_constraintsList.size(); ++i)
             {
                 glBufferData(GL_SHADER_STORAGE_BUFFER, cloth1.m_constraintsList[i].size() * sizeof(Constraint), &(cloth1.m_constraintsList[i][0]), GL_DYNAMIC_COPY);
-                glDispatchCompute(cloth1.m_constraintsList[i].size(), 1, 1);
+                glDispatchCompute(cloth1.m_constraintsList[i].size() / 16, 1, 1);
             }
         }
 
@@ -1011,8 +1012,28 @@ namespace cloth_4_3_compute
         glUnmapBuffer(GL_ARRAY_BUFFER);
         glBindBuffer(GL_ARRAY_BUFFER, 0);
 
-        cloth1.timeStep(); // calculate the particle positions of the next frame
-        cloth1.ballCollision(ball_pos, ball_radius); // resolve collision with the ball
+        //////////////////////////////////////////////////////////////////////////
+
+        glUseProgram(vertletCSShader);
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, cloth1.vertex_vbo_storage);
+        glBufferData(GL_SHADER_STORAGE_BUFFER, cloth1.particles.size() * sizeof(Particle), &(cloth1.particles[0]), GL_DYNAMIC_COPY);
+
+        glUniform3fv(glGetUniformLocation(vertletCSShader, "ball_pos"), 1, value_ptr(ball_pos));
+        glDispatchCompute(144, 1, 1);
+
+        glMemoryBarrier(GL_ALL_BARRIER_BITS);
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, 0);
+
+        glBindBuffer(GL_ARRAY_BUFFER, cloth1.vertex_vbo_storage);
+        ptr = reinterpret_cast<Particle *>(glMapBufferRange(GL_ARRAY_BUFFER, 0, cloth1.particles.size() * sizeof(Particle), GL_MAP_READ_BIT));
+        memcpy(&cloth1.particles[0], ptr, cloth1.particles.size()*sizeof(Particle));
+
+        glUnmapBuffer(GL_ARRAY_BUFFER);
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+
+        // cloth1.timeStep(); // calculate the particle positions of the next frame
+        // cloth1.ballCollision(ball_pos, ball_radius); // resolve collision with the ball
 
         // drawing
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -1171,7 +1192,8 @@ namespace cloth_4_3_compute
         unlitShader = loadShader("../cloth_4_3_compute/unlit.vert", "../cloth_4_3_compute/unlit.frag");
         computeShader = loadComputeShader("../cloth_4_3_compute/complete_cs.glsl");
         constraintCSShader = loadComputeShader("../cloth_4_3_compute/constraints_cs.glsl");
-        
+        vertletCSShader = loadComputeShader("../cloth_4_3_compute/vertlet_cs.glsl");
+
         init();
 
         glutDisplayFunc(display);

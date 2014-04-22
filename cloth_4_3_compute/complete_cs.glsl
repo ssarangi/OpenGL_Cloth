@@ -172,20 +172,6 @@ void satisfyConstraint(unsigned int particleID)
 
 //--------------------------------------------------------------------------------------------------------------------//
 
-void vertlet(unsigned int particleID)
-{
-    if (particleBuffer.particles[particleID].movable == 1)
-    {
-        vec4 temp = particleBuffer.particles[particleID].position;
-        vec4 old_pos = particleBuffer.particles[particleID].old_pos;
-        vec4 acceleration = particleBuffer.particles[particleID].acceleration;
-
-        particleBuffer.particles[particleID].position = temp + (temp - old_pos) * (1.0f - DAMPING) + acceleration * TIME_STEPSIZE2;
-        particleBuffer.particles[particleID].old_pos = temp;
-        particleBuffer.particles[particleID].acceleration = vec4(0, 0, 0, 0);
-    }
-}
-
 void ballCollision(unsigned int particleID)
 {
 
@@ -201,8 +187,8 @@ void main()
     vec4 gravity = vec4(0, -0.2, 0, 0) * TIME_STEPSIZE2;
     addGravity(gravity, flattened_id);
     
-    //vec4 windForce = vec4(0.5, 0, 0.2, 0.0) * TIME_STEPSIZE2;
-    //addWindForce(windForce, flattened_id);
+    vec4 windForce = vec4(0.5, 0, 0.2, 0.0) * TIME_STEPSIZE2;
+    // addWindForce(windForce, flattened_id);
 
     //satisfyConstraint(flattened_id);
 
